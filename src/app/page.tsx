@@ -1,19 +1,24 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ScoreRing } from "@/components/score-ring";
+import { ScrollyContainer } from "@/components/scrollytelling/scrolly-container";
 import {
   FileText,
   Building2,
   Code2,
   ArrowRight,
-  Upload,
-  Target,
+  Sparkles,
+  TrendingUp,
+  Rocket,
+  Award,
+  DollarSign,
+  CheckCircle2,
   Trophy,
 } from "lucide-react";
 
 const subScores = [
-  { label: "ATS", value: 91 },
-  { label: "Recruiter", value: 84 },
+  { label: "ATS",            value: 91 },
+  { label: "Recruiter",      value: 84 },
   { label: "HR Readability", value: 88 },
 ];
 
@@ -22,171 +27,293 @@ const pillars = [
     icon: FileText,
     title: "Resume Intelligence",
     body: "Upload once. Get a scored, section-by-section breakdown and AI-rewritten bullet points tuned for the ATS systems Indian recruiters actually use.",
+    accent: "var(--orange)",
+    accentDim: "var(--orange-glow)",
   },
   {
     icon: Building2,
     title: "Company Intelligence",
     body: "Real hiring-process breakdowns, required skills, and prep roadmaps for the companies actually recruiting on Indian campuses this season.",
+    accent: "var(--teal)",
+    accentDim: "var(--teal-dim)",
   },
   {
     icon: Code2,
     title: "DSA Prep, Mapped to Companies",
     body: "Practice the topics each company is known to emphasize, not a generic question dump — tied directly to the companies you're targeting.",
+    accent: "var(--amber)",
+    accentDim: "var(--amber-dim)",
   },
-];
-
-const steps = [
-  { icon: Upload, title: "Upload your resume", body: "PDF or DOCX, under a minute." },
-  { icon: Target, title: "Pick your target companies", body: "We map what each one actually looks for." },
-  { icon: Trophy, title: "Follow your roadmap", body: "Resume fixes, DSA topics, and company prep in one place." },
 ];
 
 export default function Home() {
   return (
-    <div className="flex flex-col">
-      {/* Nav */}
-      <header className="border-b border-slate-200">
+    <div className="flex flex-col min-h-screen" style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}>
+
+      {/* ── Nav ── */}
+      <header
+        className="sticky top-0 z-40 glass"
+        style={{ borderBottom: "1px solid var(--border)" }}
+      >
         <div className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
-          <span className="font-display text-xl font-semibold text-navy-900">
-            CareerOS
+          <span className="font-display text-xl font-semibold">
+            Career<span style={{ color: "var(--orange)" }}>OS</span>
           </span>
-          <nav className="hidden sm:flex items-center gap-8 text-sm text-slate-600">
-            <a href="#how-it-works" className="hover:text-navy-900">How it works</a>
-            <a href="#pillars" className="hover:text-navy-900">What you get</a>
+          <nav className="hidden sm:flex items-center gap-8 text-sm" style={{ color: "var(--text-secondary)" }}>
+            <a href="#scrollytelling" className="hover:opacity-80 transition-opacity">6-Step Story</a>
+            <a href="#projects" className="hover:opacity-80 transition-opacity">Internship Hub</a>
+            <a href="#pillars" className="hover:opacity-80 transition-opacity">What you get</a>
           </nav>
-          <Button asChild size="sm" variant="primary">
-            <Link href="/signup">Get started</Link>
-          </Button>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/login"
+              className="text-sm font-medium transition-opacity hover:opacity-70"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Log in
+            </Link>
+            <Button asChild size="sm" variant="primary">
+              <Link href="/signup">Get started</Link>
+            </Button>
+          </div>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="mx-auto max-w-6xl px-6 py-20 grid md:grid-cols-2 gap-14 items-center">
-        <div>
-          <p className="text-xs font-semibold tracking-[0.15em] text-teal-700 uppercase mb-4">
+      {/* ── Hero ── */}
+      <section className="mx-auto max-w-6xl px-6 py-16 sm:py-24 grid md:grid-cols-2 gap-12 items-center">
+        <div className="animate-fade-up">
+          <div
+            className="inline-flex items-center gap-2 text-xs font-semibold tracking-widest uppercase rounded-full px-3.5 py-1.5 mb-6"
+            style={{
+              background: "var(--orange-glow)",
+              border: "1px solid rgba(249,115,22,0.25)",
+              color: "var(--orange)",
+            }}
+          >
+            <Sparkles className="size-3.5" />
             Built for campus placement season
-          </p>
-          <h1 className="font-display text-5xl md:text-6xl font-semibold text-navy-900 leading-[1.05] mb-6">
-            Know exactly what stands between you and the offer.
+          </div>
+          <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-semibold leading-[1.08] mb-6" style={{ color: "var(--text-primary)" }}>
+            Know exactly what stands between you and the{" "}
+            <span style={{ color: "var(--orange)" }}>offer.</span>
           </h1>
-          <p className="text-lg text-slate-600 mb-8 max-w-md">
-            CareerOS scores your resume, maps what each target company
-            actually looks for, and builds your prep roadmap — one AI-native
-            platform instead of five disconnected tools.
+          <p className="text-base sm:text-lg mb-8 max-w-md leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+            CareerOS scores your resume, maps what each target company actually looks for,
+            and builds your prep roadmap — one AI-native platform instead of five disconnected tools.
           </p>
           <div className="flex flex-wrap gap-3">
             <Button asChild size="lg" variant="primary">
               <Link href="/signup">
-                Analyze my resume <ArrowRight className="size-4" />
+                Analyse my resume <ArrowRight className="size-4" />
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link href="#how-it-works">See how it works</Link>
+              <Link href="#scrollytelling">Explore 6-Step Story</Link>
             </Button>
+          </div>
+
+          {/* Social proof */}
+          <div className="flex items-center gap-4 mt-8">
+            <div className="flex -space-x-2">
+              {["A","B","C","D"].map((l) => (
+                <div
+                  key={l}
+                  className="size-8 rounded-full flex items-center justify-center text-xs font-bold border-2"
+                  style={{
+                    background: "linear-gradient(135deg, var(--orange) 0%, #fb923c 100%)",
+                    borderColor: "var(--bg-base)",
+                    color: "#fff",
+                  }}
+                >
+                  {l}
+                </div>
+              ))}
+            </div>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              Join students prepping for top placement offers
+            </p>
           </div>
         </div>
 
-        {/* Signature visual: live-feeling score card */}
-        <div className="flex justify-center md:justify-end">
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-lg p-8 w-full max-w-sm">
-            <div className="flex items-center justify-between mb-6">
-              <span className="text-sm font-medium text-slate-500">Your Resume Score</span>
-              <span className="text-xs font-medium px-2 py-1 rounded-full bg-teal-50 text-teal-700">
-                Updated now
+        {/* ── Hero visual: score card ── */}
+        <div className="flex justify-center md:justify-end animate-float">
+          <div
+            className="rounded-3xl p-7 w-full max-w-sm"
+            style={{
+              background: "var(--bg-surface)",
+              border: "1px solid var(--border-strong)",
+              boxShadow: "var(--shadow-lg), 0 0 60px rgba(249,115,22,0.06)",
+            }}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <span className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
+                Your Resume Score
+              </span>
+              <span
+                className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                style={{ background: "var(--orange-glow)", color: "var(--orange)", border: "1px solid rgba(249,115,22,0.2)" }}
+              >
+                ✦ Live AI
               </span>
             </div>
-            <div className="flex justify-center mb-6">
+            <div className="flex justify-center mb-5">
               <ScoreRing score={87} size={148} />
             </div>
             <div className="space-y-3">
               {subScores.map((s) => (
                 <div key={s.label} className="flex items-center gap-3">
-                  <span className="text-sm text-slate-600 w-32">{s.label}</span>
-                  <div className="flex-1 h-1.5 rounded-full bg-slate-100">
+                  <span className="text-xs w-28 shrink-0" style={{ color: "var(--text-muted)" }}>
+                    {s.label}
+                  </span>
+                  <div
+                    className="flex-1 h-1.5 rounded-full overflow-hidden"
+                    style={{ background: "var(--bg-surface-2)" }}
+                  >
                     <div
-                      className="h-1.5 rounded-full bg-navy-800"
-                      style={{ width: `${s.value}%` }}
+                      className="h-1.5 rounded-full"
+                      style={{
+                        width: `${s.value}%`,
+                        background: "linear-gradient(90deg, var(--orange), #fb923c)",
+                      }}
                     />
                   </div>
-                  <span className="text-sm font-medium text-slate-700 w-8 text-right">
+                  <span className="text-xs font-semibold w-8 text-right" style={{ color: "var(--text-primary)" }}>
                     {s.value}
                   </span>
                 </div>
               ))}
             </div>
+
+            {/* Floating tag */}
+            <div
+              className="mt-5 flex items-center gap-2 rounded-2xl px-3.5 py-2.5"
+              style={{ background: "var(--bg-surface-2)", border: "1px solid var(--border)" }}
+            >
+              <TrendingUp className="size-4" style={{ color: "var(--teal)" }} />
+              <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                ATS score improved by <strong style={{ color: "var(--teal)" }}>+23 pts</strong> after rewrite
+              </span>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Problem stats */}
-      <section className="bg-navy-900 text-white py-16">
-        <div className="mx-auto max-w-6xl px-6 grid sm:grid-cols-2 gap-10">
-          <div>
-            <p className="font-display text-5xl font-semibold text-teal-400 mb-2">1.5M</p>
-            <p className="text-slate-300 max-w-xs">
-              engineering graduates enter the Indian job market every year.
-            </p>
-          </div>
-          <div>
-            <p className="font-display text-5xl font-semibold text-amber-400 mb-2">83%</p>
-            <p className="text-slate-300 max-w-xs">
-              graduate without a role or internship matched to their skills.
-              Preparation, not talent, is usually the gap.
-            </p>
-          </div>
-        </div>
+      {/* ── Signature Scrollytelling Section (Phase 1) ── */}
+      <section id="scrollytelling" className="border-t border-b border-border py-12" style={{ background: "var(--bg-surface)" }}>
+        <ScrollyContainer />
       </section>
 
-      {/* How it works */}
-      <section id="how-it-works" className="mx-auto max-w-6xl px-6 py-20">
-        <h2 className="font-display text-3xl font-semibold text-navy-900 mb-12 text-center">
-          Three steps. One roadmap.
-        </h2>
-        <div className="grid sm:grid-cols-3 gap-8">
-          {steps.map((s, i) => (
-            <div key={s.title} className="text-center">
-              <div className="mx-auto mb-4 size-14 rounded-full bg-teal-50 flex items-center justify-center">
-                <s.icon className="size-6 text-teal-700" />
+      {/* ── PROJECTS & INTERNSHIP HUB FEATURE SHOWCASE ── */}
+      <section id="projects" className="mx-auto max-w-6xl px-6 py-20">
+        <div className="surface border border-orange-500/30 rounded-3xl p-8 sm:p-12 shadow-2xl relative overflow-hidden bg-gradient-to-br from-orange-500/10 via-surface to-surface">
+          <div className="grid md:grid-cols-2 gap-8 items-center relative z-10">
+            <div className="space-y-4">
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold text-orange-400 bg-orange-500/15 border border-orange-500/30">
+                <Rocket className="size-3.5 text-orange-500" /> New Feature: Projects & Internship Hub
               </div>
-              <p className="font-semibold text-navy-900 mb-1">{s.title}</p>
-              <p className="text-sm text-slate-500">{s.body}</p>
-              {i < steps.length - 1 && (
-                <div className="hidden sm:block h-px bg-slate-200 mt-8" />
-              )}
+
+              <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-primary leading-tight">
+                Build Real SaaS Products. Earn <span className="text-orange-400">1-6 Months Internships & 5% Revenue Share.</span>
+              </h2>
+
+              <p className="text-sm text-secondary leading-relaxed">
+                Join production software engineering teams. Get verified Internship Certificates, LORs, PDF Offer Letters, Discord group access, and 5% equal revenue sharing on completed software sales.
+              </p>
+
+              <div className="grid sm:grid-cols-2 gap-3 pt-2 text-xs font-semibold text-primary">
+                <div className="surface-2 p-3 rounded-2xl border border-border flex items-center gap-2">
+                  <Award className="size-4 text-teal-400 shrink-0" />
+                  <span>Verified Cert & LOR</span>
+                </div>
+                <div className="surface-2 p-3 rounded-2xl border border-border flex items-center gap-2">
+                  <DollarSign className="size-4 text-orange-500 shrink-0" />
+                  <span>5% Revenue Sharing</span>
+                </div>
+                <div className="surface-2 p-3 rounded-2xl border border-border flex items-center gap-2">
+                  <CheckCircle2 className="size-4 text-teal-400 shrink-0" />
+                  <span>Offer Letter PDF</span>
+                </div>
+                <div className="surface-2 p-3 rounded-2xl border border-border flex items-center gap-2">
+                  <Trophy className="size-4 text-amber-400 shrink-0" />
+                  <span>Badge Vault & Ranks</span>
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <Button asChild size="lg" variant="primary">
+                  <Link href="/dashboard/projects">
+                    Explore Projects & Internships <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+
+            {/* Visual Right Preview Card */}
+            <div className="surface-2 p-6 rounded-3xl border border-orange-500/30 space-y-4 shadow-xl">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-teal-400 bg-teal-500/10 px-3 py-1 rounded-full border border-teal-500/20">
+                  94% Skill Match
+                </span>
+                <span className="text-xs font-bold text-orange-400 font-mono">₹15,000 / mo</span>
+              </div>
+
+              <div>
+                <h3 className="font-display text-xl font-bold text-primary">Autonomous Code Refactoring Agent</h3>
+                <p className="text-xs text-muted">3 Months Track · 15 hrs/week · Next.js & OpenAI</p>
+              </div>
+
+              <div className="surface p-4 rounded-2xl border border-border space-y-2 text-xs">
+                <div className="flex justify-between font-bold">
+                  <span className="text-primary">Application Status</span>
+                  <span className="text-teal-400">Offer Letter Ready 🎉</span>
+                </div>
+                <p className="text-[11px] text-secondary">
+                  Selected for Frontend Domain Team. Discord channel and PDF offer letter generated.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Pillars / What you get ── */}
+      <section id="pillars" className="mx-auto max-w-6xl px-6 py-20">
+        <div className="text-center mb-14">
+          <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: "var(--orange)" }}>
+            What&apos;s inside
+          </p>
+          <h2 className="font-display text-3xl sm:text-4xl font-semibold" style={{ color: "var(--text-primary)" }}>
+            Everything you need, nothing you don&apos;t.
+          </h2>
+        </div>
+        <div className="grid md:grid-cols-3 gap-6">
+          {pillars.map((p) => (
+            <div
+              key={p.title}
+              className="rounded-3xl p-7 group hover:-translate-y-1 hover:shadow-xl transition-all duration-300 surface border border-border"
+            >
+              <div
+                className="size-12 rounded-2xl flex items-center justify-center mb-5 transition-transform duration-300 group-hover:scale-110"
+                style={{ background: p.accentDim }}
+              >
+                <p.icon className="size-6" style={{ color: p.accent }} />
+              </div>
+              <p className="font-semibold text-lg mb-2" style={{ color: "var(--text-primary)" }}>{p.title}</p>
+              <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{p.body}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Pillars */}
-      <section id="pillars" className="bg-slate-50 py-20">
-        <div className="mx-auto max-w-6xl px-6">
-          <h2 className="font-display text-3xl font-semibold text-navy-900 mb-12 text-center">
-            What you get today
-          </h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            {pillars.map((p) => (
-              <div
-                key={p.title}
-                className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm"
-              >
-                <div className="size-11 rounded-full bg-teal-50 flex items-center justify-center mb-5">
-                  <p.icon className="size-5 text-teal-700" />
-                </div>
-                <p className="font-semibold text-navy-900 mb-2">{p.title}</p>
-                <p className="text-sm text-slate-500 leading-relaxed">{p.body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
+      {/* ── Final CTA ── */}
       <section className="mx-auto max-w-6xl px-6 py-20 text-center">
-        <h2 className="font-display text-3xl font-semibold text-navy-900 mb-4">
-          Start with your resume. It takes a minute.
+        <h2 className="font-display text-3xl sm:text-4xl font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
+          Start with your resume.{" "}
+          <span style={{ color: "var(--orange)" }}>It takes under a minute.</span>
         </h2>
-        <p className="text-slate-500 mb-8">Free to try. No credit card needed.</p>
+        <p className="mb-8 text-sm" style={{ color: "var(--text-muted)" }}>
+          Free to try for placement preparation.
+        </p>
         <Button asChild size="lg" variant="primary">
           <Link href="/signup">
             Get my resume score <ArrowRight className="size-4" />
@@ -194,9 +321,13 @@ export default function Home() {
         </Button>
       </section>
 
-      <footer className="border-t border-slate-200 py-8">
-        <div className="mx-auto max-w-6xl px-6 text-sm text-slate-400">
-          CareerOS
+      {/* ── Footer ── */}
+      <footer style={{ borderTop: "1px solid var(--border)" }}>
+        <div className="mx-auto max-w-6xl px-6 py-8 flex items-center justify-between text-sm" style={{ color: "var(--text-muted)" }}>
+          <span>
+            Career<span style={{ color: "var(--orange)" }}>OS</span>
+          </span>
+          <span>Built for India&apos;s campus placement season.</span>
         </div>
       </footer>
     </div>

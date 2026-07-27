@@ -45,6 +45,9 @@ export function table<T extends keyof Tables>(supabase: SupabaseClient, name: T)
         then: PromiseLike<{ data: null; error: { message: string } | null }>["then"];
       };
     },
+    upsert(values: Insert, options?: { onConflict?: string; ignoreDuplicates?: boolean }) {
+      return builder.upsert(values, options) as PromiseLike<{ data: Row | null; error: { message: string } | null }>;
+    },
     update(values: Update): Filterable<Row> {
       return builder.update(values);
     },

@@ -11,13 +11,24 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { LayoutDashboard, FileText, Building2, Code2, User, LogOut } from "lucide-react";
+import {
+  LayoutDashboard,
+  FileText,
+  Building2,
+  Code2,
+  User,
+  LogOut,
+  Rocket,
+} from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 const navLinks = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/dashboard/resume", label: "Resume", icon: FileText },
-  { href: "/dashboard/companies", label: "Companies", icon: Building2 },
-  { href: "/dashboard/prep", label: "DSA Prep", icon: Code2 },
+  { href: "/dashboard",          label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/dashboard/resume",   label: "Resume",    icon: FileText },
+  { href: "/dashboard/companies",label: "Companies", icon: Building2 },
+  { href: "/dashboard/prep",     label: "DSA Prep",  icon: Code2 },
+  { href: "/dashboard/projects", label: "Projects & Internships", icon: Rocket },
 ];
 
 function initials(name: string) {
@@ -37,7 +48,7 @@ export function DashboardNav({
   email: string;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
+  const router   = useRouter();
 
   async function handleLogout() {
     const supabase = createClient();
@@ -47,79 +58,158 @@ export function DashboardNav({
   }
 
   return (
-    <header className="border-b border-slate-200 bg-white">
-      <div className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-8">
-          <Link href="/dashboard" className="font-display text-xl font-semibold text-navy-900">
-            CareerOS
-          </Link>
-          <nav className="hidden sm:flex items-center gap-1">
-            {navLinks.map((link) => {
-              const isActive = link.exact
-                ? pathname === link.href
-                : pathname.startsWith(link.href);
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-teal-50 text-teal-700"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                  }`}
+    <>
+      {/* ── Desktop / Top nav ── */}
+      <header
+        className="sticky top-0 z-40 glass"
+        style={{
+          borderBottom: "1px solid var(--border)",
+        }}
+      >
+        <div className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
+          {/* Logo + Nav links */}
+          <div className="flex items-center gap-6">
+            <Link
+              href="/dashboard"
+              className="font-display text-xl font-semibold transition-opacity hover:opacity-80 shrink-0"
+              style={{ color: "var(--text-primary)" }}
+            >
+              Career<span style={{ color: "var(--orange)" }}>OS</span>
+            </Link>
+
+            <nav className="hidden md:flex items-center gap-1">
+              {navLinks.map((link) => {
+                const isActive = link.exact
+                  ? pathname === link.href
+                  : pathname.startsWith(link.href);
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-all duration-200 ${
+                      isActive ? "font-semibold" : "hover:opacity-80"
+                    }`}
+                    style={
+                      isActive
+                        ? {
+                            background: "var(--orange-glow)",
+                            color: "var(--orange)",
+                            border: "1px solid rgba(249,115,22,0.2)",
+                          }
+                        : {
+                            color: "var(--text-secondary)",
+                            background: "transparent",
+                            border: "1px solid transparent",
+                          }
+                    }
+                  >
+                    <link.icon className="size-4" />
+                    {link.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* Right actions */}
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <ThemeToggle />
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="flex items-center gap-2 rounded-full outline-none focus-visible:ring-2 ml-1"
+                  style={{ "--tw-ring-color": "var(--orange)" } as React.CSSProperties}
                 >
-                  <link.icon className="size-4" />
-                  {link.label}
-                </Link>
-              );
-            })}
-          </nav>
+                  <span
+                    className="size-9 rounded-full text-xs font-bold flex items-center justify-center transition-all hover:scale-105"
+                    style={{
+                      background: "linear-gradient(135deg, var(--orange) 0%, #fb923c 100%)",
+                      color: "#fff",
+                      boxShadow: "0 2px 8px rgba(249,115,22,0.35)",
+                    }}
+                  >
+                    {initials(displayName || email)}
+                  </span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>
+                  <p className="font-semibold" style={{ color: "var(--text-primary)" }}>
+                    {displayName}
+                  </p>
+                  <p className="font-normal truncate text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                    {email}
+                  </p>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/profile">
+                    <User className="size-4" /> Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/projects/leaderboard">
+                    <Rocket className="size-4" /> Leaderboard & Badges
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} style={{ color: "var(--red)" }}>
+                  <LogOut className="size-4" /> Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
+      </header>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-teal-600">
-              <span className="size-9 rounded-full bg-navy-900 text-white text-xs font-semibold flex items-center justify-center">
-                {initials(displayName || email)}
-              </span>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>
-              <p className="font-medium text-slate-900">{displayName}</p>
-              <p className="font-normal text-slate-400 truncate">{email}</p>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/dashboard/profile">
-                <User className="size-4" /> Profile
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout}>
-              <LogOut className="size-4" /> Sign out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      <nav className="sm:hidden flex items-center gap-1 px-4 pb-3 overflow-x-auto">
+      {/* ── Mobile Bottom Tab Bar ── */}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around bottom-nav-safe"
+        style={{
+          background: "var(--glass-bg)",
+          borderTop: "1px solid var(--border)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+          paddingBottom: "env(safe-area-inset-bottom, 4px)",
+        }}
+      >
         {navLinks.map((link) => {
-          const isActive = link.exact ? pathname === link.href : pathname.startsWith(link.href);
+          const isActive = link.exact
+            ? pathname === link.href
+            : pathname.startsWith(link.href);
           return (
             <Link
               key={link.href}
               href={link.href}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap ${
-                isActive ? "bg-teal-50 text-teal-700" : "text-slate-600"
-              }`}
+              className="flex flex-col items-center gap-0.5 px-2 pt-2 pb-1 min-w-[48px] transition-all duration-200"
+              style={{ color: isActive ? "var(--orange)" : "var(--text-muted)" }}
             >
-              <link.icon className="size-4" />
-              {link.label}
+              <span
+                className="relative flex items-center justify-center size-9 rounded-xl transition-all duration-200"
+                style={
+                  isActive
+                    ? { background: "var(--orange-glow)", transform: "scale(1.05)" }
+                    : {}
+                }
+              >
+                <link.icon className="size-4" />
+                {isActive && (
+                  <span
+                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 size-1 rounded-full"
+                    style={{ background: "var(--orange)" }}
+                  />
+                )}
+              </span>
+              <span className="text-[9px] font-medium truncate max-w-[64px]">{link.label}</span>
             </Link>
           );
         })}
       </nav>
-    </header>
+
+      {/* Mobile bottom spacer so content doesn't hide behind tab bar */}
+      <div className="md:hidden h-20" />
+    </>
   );
 }

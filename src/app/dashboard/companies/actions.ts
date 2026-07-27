@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { table } from "@/lib/supabase/typed-table";
+import { ensureUserExists } from "@/lib/user";
 
 export async function toggleCompanyTarget(
   companyId: string,
@@ -16,6 +17,9 @@ export async function toggleCompanyTarget(
   if (!user) {
     return { success: false, error: "Not authenticated" };
   }
+
+  // Ensure public.users record exists
+  await ensureUserExists(user.id);
 
   if (isCurrentlyTargeted) {
     const { error } = await table(supabase, "user_company_targets")

@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
+  // Silence the multiple-lockfile Turbopack warning by explicitly setting root
+  // to this project's directory, not the parent workspace directory.
+  turbopack: {
+    root: path.join(__dirname),
+  },
   // pdf-parse (via pdfjs-dist) sets up a Worker internally for PDF processing.
   // Turbopack/webpack bundling breaks that setup in server code — it tries to load
   // a worker chunk file that never gets emitted at the path it expects, failing with

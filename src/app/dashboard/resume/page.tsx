@@ -5,7 +5,8 @@ import { ResumeReport } from "@/components/resume-report";
 import { ResumeHistory } from "./resume-history";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { redirect } from "next/navigation";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Wand2 } from "lucide-react";
+import Link from "next/link";
 import type { ResumeAnalysisReport } from "@/lib/resume/types";
 
 export default async function ResumePage() {
@@ -65,12 +66,21 @@ export default async function ResumePage() {
   );
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <div>
-        <h1 className="font-display text-3xl font-semibold text-navy-900">Resume</h1>
-        <p className="text-slate-500 mt-1">
-          {latestResume ? latestResume.file_name : "Upload a PDF or DOCX to get your score."}
-        </p>
+    <div className="max-w-6xl mx-auto space-y-8 animate-fade-up">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2 border-b border-border">
+        <div>
+          <h1 className="font-display text-3xl font-bold text-primary">Resume Intelligence</h1>
+          <p className="text-xs text-secondary mt-1 flex items-center gap-2">
+            <span className="font-medium text-orange-400">Active File:</span> {latestResume ? latestResume.file_name : "Upload a PDF or DOCX to get your score."}
+          </p>
+        </div>
+        {/* ── AI Rewrite CTA ── */}
+        <Link
+          href="/dashboard/resume/rewrite"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-xs bg-orange-500 text-white hover:brightness-110 transition-all shadow-md shadow-orange-500/20 shrink-0"
+        >
+          <Wand2 className="size-4" /> AI Re-write Resume
+        </Link>
       </div>
 
       {!latestResume && <ResumeUploader />}

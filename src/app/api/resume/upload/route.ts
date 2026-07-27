@@ -2,15 +2,11 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { table } from "@/lib/supabase/typed-table";
 import { checkResumeRateLimit } from "@/lib/resume/rate-limit";
+import { ensureUserExists } from "@/lib/user";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-/**
- * Day 5 (upload) — stores the file in Supabase Storage and creates the `resumes` row.
- * Parsing/scoring happens separately in /api/resume/analyze so upload feels instant
- * and the (slower) AI pipeline can show its own loading state.
- */
 export async function POST(request: Request) {
   const supabase = await createClient();
   const {
@@ -20,6 +16,9 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
+
+  // Ensure public.users row exists using admin client (bypasses RLS & foreign key error)
+  await ensureUserExists(user.id);
 
   const rateLimit = await checkResumeRateLimit(supabase, user.id);
   if (!rateLimit.allowed) {
@@ -42,7 +41,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const MAX_SIZE = 8 * 1024 * 1024; // 8MB — generous for a resume, cheap to enforce
+  const MAX_SIZE = 8 * 1024 * 1024; // 8MB
   if (file.size > MAX_SIZE) {
     return NextResponse.json(
       { error: "File is too large. Please upload a file under 8MB." },

@@ -22,11 +22,26 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
   const fullName = (formData.get("fullName") as string)?.trim();
   const username = (formData.get("username") as string)?.trim();
 
-  if (username && !/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
-    return {
-      success: false,
-      error: "Username must be 3-20 characters: letters, numbers, underscores only.",
-    };
+  if (username) {
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
+      return {
+        success: false,
+        error: "Username must be 3-20 characters: letters, numbers, underscores only.",
+      };
+    }
+
+    // Explicit case-insensitive uniqueness check against all registered users
+    const { data: existingUsers } = await table(supabase, "users").select("id, username");
+    const isTaken = existingUsers?.some(
+      (u) => u.id !== user.id && u.username && u.username.toLowerCase() === username.toLowerCase()
+    );
+
+    if (isTaken) {
+      return {
+        success: false,
+        error: `Username "@${username}" is already taken by another user. Please choose a unique username.`,
+      };
+    }
   }
 
   const { error } = await table(supabase, "users")
@@ -34,13 +49,13 @@ export async function updateProfile(formData: FormData): Promise<UpdateProfileRe
     .eq("id", user.id);
 
   if (error) {
-    if (error.message.toLowerCase().includes("duplicate")) {
+    if (error.message.toLowerCase().includes("duplicate") || error.message.toLowerCase().includes("unique")) {
       return { success: false, error: "That username is already taken — try another one." };
     }
     return { success: false, error: error.message };
   }
 
   revalidatePath("/dashboard/profile");
-  revalidatePath("/dashboard"); // nav shows displayName, derived from this data
+  revalidatePath("/dashboard");
   return { success: true };
 }

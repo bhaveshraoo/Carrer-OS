@@ -2,13 +2,15 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
+  ({ className, style, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn(
-        "rounded-2xl border border-slate-200 bg-white shadow-sm",
-        className
-      )}
+      className={cn("rounded-2xl shadow-sm transition-all duration-200", className)}
+      style={{
+        background: "var(--bg-surface)",
+        border: "1px solid var(--border)",
+        ...style,
+      }}
       {...props}
     />
   )
@@ -23,15 +25,25 @@ const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
 CardHeader.displayName = "CardHeader";
 
 const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, ...props }, ref) => (
-    <h3 ref={ref} className={cn("text-lg font-semibold text-slate-900", className)} {...props} />
+  ({ className, style, ...props }, ref) => (
+    <h3
+      ref={ref}
+      className={cn("text-lg font-semibold", className)}
+      style={{ color: "var(--text-primary)", ...style }}
+      {...props}
+    />
   )
 );
 CardTitle.displayName = "CardTitle";
 
 const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
-  ({ className, ...props }, ref) => (
-    <p ref={ref} className={cn("text-sm text-slate-500", className)} {...props} />
+  ({ className, style, ...props }, ref) => (
+    <p
+      ref={ref}
+      className={cn("text-sm", className)}
+      style={{ color: "var(--text-secondary)", ...style }}
+      {...props}
+    />
   )
 );
 CardDescription.displayName = "CardDescription";
@@ -45,7 +57,12 @@ CardContent.displayName = "CardContent";
 
 const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("flex items-center p-6 pt-0", className)} {...props} />
+    <div
+      ref={ref}
+      className={cn("flex items-center p-6 pt-0 border-t", className)}
+      style={{ borderColor: "var(--border)" }}
+      {...props}
+    />
   )
 );
 CardFooter.displayName = "CardFooter";

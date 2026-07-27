@@ -1,48 +1,264 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Changa+One:ital@0;1&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@500;700&display=swap');
 @import "tailwindcss";
 
-:root {
-  --background: #F8FAFC;
-  --foreground: #1E293B;
-
-  --color-navy-900: #0F1E3D;
-  --color-navy-800: #1B2E57;
-  --color-navy-700: #24396B;
-
-  --color-teal-50: #ECFDF5;
-  --color-teal-100: #CCFBF1;
-  --color-teal-600: #0D9488;
-  --color-teal-700: #0F766E;
-
-  --color-amber-50: #FFF7E6;
-  --color-amber-400: #FBBF24;
-  --color-amber-500: #F5A623;
+/* Local Changa One Font Definition */
+@font-face {
+  font-family: 'Changa One';
+  src: url('/fonts/changa_one/ChangaOne-Regular.ttf') format('truetype');
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
 }
 
+@font-face {
+  font-family: 'Changa One';
+  src: url('/fonts/changa_one/ChangaOne-Italic.ttf') format('truetype');
+  font-weight: 400 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* ─────────────────────────────────────────────
+   CAREEROS DESIGN SYSTEM — Bold Changa One Display Typography
+   Changa One Headings · Crisp Plus Jakarta Sans Body
+   ───────────────────────────────────────────── */
+
+/* ── Light mode tokens ── */
+:root,
+[data-theme="light"] {
+  --bg-base:        #F4EFE6;
+  --bg-surface:     #FBF8F1;
+  --bg-surface-2:   #EBE4D8;
+  --bg-elevated:    #FFFFFF;
+
+  --border:         rgba(80, 60, 45, 0.14);
+  --border-strong:  rgba(80, 60, 45, 0.22);
+
+  --text-primary:   #1C1815;
+  --text-secondary: #5C524A;
+  --text-muted:     #948980;
+  --text-inverse:   #FBF8F1;
+
+  --orange:         #F97316;
+  --orange-dim:     #FED7AA;
+  --orange-glow:    rgba(249,115,22,0.15);
+  --orange-hover:   #EA6C10;
+
+  --teal:           #0D9488;
+  --teal-dim:       #CCFBF1;
+  --teal-hover:     #0F766E;
+
+  --amber:          #D97706;
+  --amber-dim:      #FEF3C7;
+
+  --red:            #EF4444;
+  --red-dim:        #FEE2E2;
+
+  --navy:           #0F1E3D;
+  --navy-dim:       #E8EDFB;
+
+  --glass-bg:       rgba(251,248,241,0.85);
+  --glass-border:   rgba(80,60,45,0.16);
+
+  --shadow-sm:      0 1px 3px rgba(80,60,45,0.08), 0 1px 2px rgba(80,60,45,0.06);
+  --shadow-md:      0 4px 16px rgba(80,60,45,0.10), 0 2px 6px rgba(80,60,45,0.06);
+  --shadow-lg:      0 20px 60px rgba(80,60,45,0.12), 0 8px 20px rgba(80,60,45,0.08);
+  --shadow-orange:  0 0 0 3px rgba(249,115,22,0.20);
+}
+
+/* ── Dark mode tokens — Soft, warm, easy-on-eyes palette ── */
+[data-theme="dark"] {
+  --bg-base:        #141210;
+  --bg-surface:     #1C1814;
+  --bg-surface-2:   #242018;
+  --bg-elevated:    #2E2820;
+
+  --border:         rgba(220, 200, 175, 0.10);
+  --border-strong:  rgba(220, 200, 175, 0.18);
+
+  /* Warm parchment text — not harsh white */
+  --text-primary:   #C8BFB0;
+  --text-secondary: #8F8478;
+  --text-muted:     #655D55;
+  --text-inverse:   #141210;
+
+  /* Orange — slightly muted, warm burnt sienna not neon */
+  --orange:         #C96A20;
+  --orange-dim:     rgba(201,106,32,0.16);
+  --orange-glow:    rgba(201,106,32,0.18);
+  --orange-hover:   #D97530;
+
+  /* Teal — soft sage/muted teal, not neon cyan */
+  --teal:           #4A9E8E;
+  --teal-dim:       rgba(74,158,142,0.14);
+  --teal-hover:     #5BB0A0;
+
+  /* Amber — warm honey gold, not glowing yellow */
+  --amber:          #B8922A;
+  --amber-dim:      rgba(184,146,42,0.14);
+
+  /* Red — soft rose, not alarm red */
+  --red:            #C06060;
+  --red-dim:        rgba(192,96,96,0.14);
+
+  --navy:           #8A9AB8;
+  --navy-dim:       rgba(138,154,184,0.12);
+
+  --glass-bg:       rgba(28,24,20,0.88);
+  --glass-border:   rgba(220,200,175,0.10);
+
+  --shadow-sm:      0 1px 3px rgba(0,0,0,0.50);
+  --shadow-md:      0 4px 16px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35);
+  --shadow-lg:      0 20px 60px rgba(0,0,0,0.75), 0 8px 20px rgba(0,0,0,0.55);
+  --shadow-orange:  0 0 0 3px rgba(201,106,32,0.22);
+}
+
+
+/* ── Tailwind v4 theme bridge ── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background:   var(--bg-base);
+  --color-foreground:   var(--text-primary);
 
-  --color-navy-900: var(--color-navy-900);
-  --color-navy-800: var(--color-navy-800);
-  --color-navy-700: var(--color-navy-700);
+  --color-navy-900:     #0F1E3D;
+  --color-navy-800:     #1B2E57;
+  --color-navy-700:     #24396B;
 
-  --color-teal-50: var(--color-teal-50);
-  --color-teal-100: var(--color-teal-100);
-  --color-teal-600: var(--color-teal-600);
-  --color-teal-700: var(--color-teal-700);
+  /* Soft sage teal — replaces harsh cyan */
+  --color-teal-50:      #EFF8F6;
+  --color-teal-100:     #D4EDE9;
+  --color-teal-400:     #4A9E8E;
+  --color-teal-600:     #3A8070;
+  --color-teal-700:     #2D6659;
 
-  --color-amber-50: var(--color-amber-50);
-  --color-amber-400: var(--color-amber-400);
-  --color-amber-500: var(--color-amber-500);
+  /* Warm honey amber — replaces neon yellow */
+  --color-amber-50:     #FBF5E6;
+  --color-amber-400:    #B8922A;
+  --color-amber-500:    #A07820;
 
-  --font-display: "Fraunces", ui-serif, Georgia, serif;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* Custom Changa One Font Setup */
+  --font-display: "Changa One", "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-sans:    "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, monospace;
+}
+
+
+/* ── Base resets ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg-base);
+  color: var(--text-primary);
   font-family: var(--font-sans);
+  transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+/* ── Heading Changa One Font Overrides ── */
+h1, h2, h3, h4, .font-display {
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+}
+
+/* ── Silk Smooth Theme transition on all elements ── */
+*, *::before, *::after {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+  transition-duration: 500ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Utility classes ── */
+.glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glow-orange {
+  box-shadow: var(--shadow-orange);
+}
+
+.surface {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+}
+
+.surface-2 {
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+}
+
+.text-primary   { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-muted     { color: var(--text-muted); }
+.accent-orange  { color: var(--orange); }
+.accent-teal    { color: var(--teal); }
+
+/* ── Shimmer animation for skeletons ── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+@keyframes scan-line {
+  0%   { top: 0%; opacity: 1; }
+  95%  { top: 95%; opacity: 1; }
+  100% { top: 95%; opacity: 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(249,115,22,0.3); }
+  50%       { box-shadow: 0 0 24px rgba(249,115,22,0.6); }
+}
+
+@keyframes fade-in-up {
+  0%   { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in-right {
+  0%   { opacity: 0; transform: translateX(12px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+.animate-fade-up {
+  animation: fade-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-right {
+  animation: fade-in-right 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-scan {
+  animation: scan-line 2.5s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s infinite;
+}
+
+/* ── Custom scrollbars ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-base);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--orange);
+}
