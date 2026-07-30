@@ -65,7 +65,14 @@ export async function POST(request: Request) {
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   )[0];
 
-  const candidateText = latestResume?.raw_text || "No uploaded resume found.";
+  if (!latestResume?.raw_text) {
+    return NextResponse.json(
+      { error: "No analyzed resume found. Please upload and analyze your resume first before running AI Match." },
+      { status: 400 }
+    );
+  }
+
+  const candidateText = latestResume.raw_text;
 
   try {
     const result = await geminiJson<CompanyMatchResult>({
