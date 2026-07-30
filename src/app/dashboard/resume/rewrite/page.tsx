@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import type { ImproveResult, OriginalResume } from "@/app/api/resume/improve/route";
 import type { BuildResult } from "@/app/api/resume/build/route";
+import { GeminiBulletRebuilder } from "@/components/resume/gemini-bullet-rebuilder";
 
 type Mode = null | "improve" | "build";
 type BuildStep = "personal" | "experience" | "education" | "skills" | "projects" | "preview";
@@ -1129,6 +1130,9 @@ function ImproveMode({ onBack }: { onBack: () => void }) {
             <Sparkles className="size-4" /> Convert to Jake&apos;s Format
           </button>
         </div>
+
+        {/* Gemini Interactive Bullet Re-builder Workbench */}
+        <GeminiBulletRebuilder />
 
         {/* Uploaded Resume Preview Container */}
         <div className="surface border border-border rounded-3xl p-6 sm:p-8 space-y-6">

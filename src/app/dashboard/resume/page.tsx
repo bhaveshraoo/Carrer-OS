@@ -3,9 +3,11 @@ import { table } from "@/lib/supabase/typed-table";
 import { ResumeUploader } from "@/components/resume-uploader";
 import { ResumeReport } from "@/components/resume-report";
 import { ResumeHistory } from "./resume-history";
+import { GeminiAtsAuditor } from "@/components/resume/gemini-ats-auditor";
+import { GeminiBulletRebuilder } from "@/components/resume/gemini-bullet-rebuilder";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { redirect } from "next/navigation";
-import { AlertTriangle, Wand2 } from "lucide-react";
+import { AlertTriangle, Wand2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import type { ResumeAnalysisReport } from "@/lib/resume/types";
 
@@ -41,8 +43,6 @@ export default async function ResumePage() {
     if (latest) analysis = { report: latest.report as ResumeAnalysisReport };
   }
 
-  // Scores for the history list — one query per older resume would be N+1; fine at
-  // this scale (a handful of resumes per user), revisit with a join if that changes.
   const historyItems = await Promise.all(
     olderResumes.map(async (r) => {
       let resumeScore: number | null = null;
@@ -66,7 +66,7 @@ export default async function ResumePage() {
   );
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-fade-up">
+    <div className="max-w-6xl mx-auto space-y-8 animate-fade-up pb-12">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2 border-b border-border">
         <div>
           <h1 className="font-display text-3xl font-bold text-primary">Resume Intelligence</h1>
@@ -107,6 +107,16 @@ export default async function ResumePage() {
             Still processing — refresh in a few seconds if this doesn&apos;t update on its own.
           </CardContent>
         </Card>
+      )}
+
+      {/* ── GEMINI ATS 5-BENCHMARK RESUME AUDITOR ── */}
+      {latestResume?.status === "analyzed" && (
+        <GeminiAtsAuditor />
+      )}
+
+      {/* ── GEMINI AI BULLET REBUILDER WORKBENCH ── */}
+      {latestResume?.status === "analyzed" && (
+        <GeminiBulletRebuilder />
       )}
 
       {analysis && (
