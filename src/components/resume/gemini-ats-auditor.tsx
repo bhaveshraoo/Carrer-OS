@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   Sparkles,
   ShieldCheck,
@@ -31,9 +32,13 @@ export interface AtsAuditData {
   priority_actions: string[];
 }
 
-export function GeminiAtsAuditor() {
-  const [loading, setLoading] = useState(false);
-  const [auditData, setAuditData] = useState<AtsAuditData | null>(null);
+export function GeminiAtsAuditor({
+  initialAuditData = null,
+}: {
+  initialAuditData?: AtsAuditData | null;
+}) {
+  const [loading, setLoading] = useState(!initialAuditData);
+  const [auditData, setAuditData] = useState<AtsAuditData | null>(initialAuditData);
   const [error, setError] = useState<string | null>(null);
 
   const runAudit = async () => {
@@ -51,6 +56,12 @@ export function GeminiAtsAuditor() {
     }
   };
 
+  useEffect(() => {
+    if (!initialAuditData) {
+      runAudit();
+    }
+  }, [initialAuditData]);
+
   return (
     <Card className="border-orange-500/30 bg-orange-500/5 shadow-xl relative overflow-hidden">
       <CardHeader className="p-6 sm:p-8">
@@ -65,7 +76,7 @@ export function GeminiAtsAuditor() {
               </CardTitle>
             </div>
             <CardDescription className="text-xs text-secondary font-medium">
-              Run an instant ATS hard-failure audit, impact score evaluation, and action verb replacement matrix.
+              Saved Gemini 3.1 hard-failure audit, impact score evaluation, and action verb replacements.
             </CardDescription>
           </div>
 
@@ -77,11 +88,11 @@ export function GeminiAtsAuditor() {
           >
             {loading ? (
               <>
-                <RefreshCw className="size-4 animate-spin mr-1.5" /> Auditing Resume...
+                <RefreshCw className="size-4 animate-spin mr-1.5" /> Running Audit...
               </>
             ) : (
               <>
-                <Wand2 className="size-4 mr-1.5" /> Run Gemini ATS Audit
+                <RefreshCw className="size-4 mr-1.5" /> Refresh Audit
               </>
             )}
           </Button>
@@ -94,6 +105,13 @@ export function GeminiAtsAuditor() {
             <AlertTriangle className="size-4 shrink-0" />
             <span>{error}</span>
           </div>
+        </CardContent>
+      )}
+
+      {loading && !auditData && (
+        <CardContent className="px-6 sm:px-8 pb-8 text-center py-8">
+          <RefreshCw className="size-6 text-orange-400 animate-spin mx-auto mb-2" />
+          <p className="text-xs text-secondary font-medium">Auto-analyzing resume with Gemini 3.1...</p>
         </CardContent>
       )}
 
@@ -139,6 +157,29 @@ export function GeminiAtsAuditor() {
                 {auditData.jakes_alignment_notes?.substring(0, 45) || "Single-Column Density Check"}
               </p>
             </div>
+          </div>
+
+          {/* ── AI RE-WRITE RESUME CTA BANNER RIGHT AFTER SCORE ── */}
+          <div className="surface p-4 rounded-2xl border border-orange-500/30 bg-gradient-to-r from-orange-500/15 via-orange-500/5 to-transparent flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="size-10 rounded-xl bg-orange-500 text-white flex items-center justify-center font-bold shadow-md shadow-orange-500/25 shrink-0">
+                <Wand2 className="size-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-extrabold text-primary flex items-center gap-1.5">
+                  Ready to boost your resume score to 90+?
+                </h4>
+                <p className="text-xs text-secondary font-medium">
+                  Auto-rewrite your resume into Stanford/IIT grads&apos; Jake&apos;s Resume LaTeX layout with Gemini.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/dashboard/resume/rewrite"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-extrabold text-xs bg-orange-500 text-white hover:brightness-110 transition-all shadow-lg shadow-orange-500/25 shrink-0"
+            >
+              <Wand2 className="size-4" /> AI Re-write Resume
+            </Link>
           </div>
 
           {/* ── ACTION VERB POWER MATRIX ── */}

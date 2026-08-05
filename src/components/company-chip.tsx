@@ -9,10 +9,12 @@ export function CompanyChip({
   companyId,
   name,
   initiallyTargeted,
+  onToggle,
 }: {
   companyId: string;
   name: string;
   initiallyTargeted: boolean;
+  onToggle?: (companyId: string, targeted: boolean) => void;
 }) {
   const [targeted, setTargeted]      = useState(initiallyTargeted);
   const [isPending, startTransition] = useTransition();
@@ -21,6 +23,7 @@ export function CompanyChip({
   function handleClick() {
     const next = !targeted;
     setTargeted(next);
+    if (onToggle) onToggle(companyId, next);
 
     startTransition(async () => {
       const result = await toggleCompanyTarget(companyId, !next);

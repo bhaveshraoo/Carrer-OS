@@ -12,7 +12,6 @@ import {
   Rocket,
   FileCheck,
   Download,
-  MessageSquare,
   Search,
   Zap,
   Sparkles,
@@ -21,6 +20,11 @@ import {
   X,
   Building2,
   Star,
+  Sliders,
+  Check,
+  XCircle,
+  Clock,
+  ExternalLink,
 } from "lucide-react";
 import { useNotifications } from "@/components/notifications/notification-provider";
 
@@ -36,7 +40,7 @@ export interface Intern {
   durationMonths: number;
   stipendMonthly: string;
   attendancePct: number;
-  performanceScore: number; // 0 - 100
+  performanceScore: number;
   offerStatus: "Enrolled" | "Offer Sent" | "Certificate Issued";
   badges: string[];
 }
@@ -114,6 +118,7 @@ export default function AdminInternsPage() {
   const [search, setSearch] = useState("");
   const [selectedDomain, setSelectedDomain] = useState("All");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedInternForEval, setSelectedInternForEval] = useState<Intern | null>(null);
 
   // Form State
   const [name, setName] = useState("");
@@ -184,6 +189,22 @@ export default function AdminInternsPage() {
     });
   }
 
+  function handleMarkAttendance(internId: string, delta: number) {
+    setInterns((prev) =>
+      prev.map((i) => {
+        if (i.id !== internId) return i;
+        const newPct = Math.min(100, Math.max(0, i.attendancePct + delta));
+        return { ...i, attendancePct: newPct };
+      })
+    );
+  }
+
+  function handleUpdateScore(internId: string, score: number) {
+    setInterns((prev) =>
+      prev.map((i) => (i.id === internId ? { ...i, performanceScore: score } : i))
+    );
+  }
+
   return (
     <div className="space-y-6 animate-fade-up">
 
@@ -242,7 +263,7 @@ export default function AdminInternsPage() {
 
         <div className="surface p-5 rounded-3xl border border-teal-500/30 space-y-2 shadow-sm bg-teal-500/5">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-teal-400 uppercase tracking-wider">Certs & LORs Issued</span>
+            <span className="text-[10px] font-bold text-teal-400 uppercase tracking-wider">Certs &amp; LORs Issued</span>
             <Award className="size-4 text-teal-400" />
           </div>
           <p className="font-display text-2xl font-extrabold text-teal-400">{certsIssuedCount}</p>
@@ -253,7 +274,6 @@ export default function AdminInternsPage() {
       {/* SEARCH & DOMAIN FILTERS */}
       <div className="space-y-3">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          {/* Search Input */}
           <div className="relative flex-1">
             <Search className="size-4 text-muted absolute left-3.5 top-3" />
             <input
@@ -265,7 +285,6 @@ export default function AdminInternsPage() {
             />
           </div>
 
-          {/* Domain Filter Pills */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
             {["All", "Frontend", "Backend", "AI/ML", "Full Stack"].map((d) => (
               <button
@@ -317,31 +336,64 @@ export default function AdminInternsPage() {
                   {intern.offerStatus}
                 </span>
 
+                <button
+                  onClick={() => setSelectedInternForEval(intern)}
+                  className="px-3.5 py-1.5 rounded-xl font-bold surface-2 border border-border hover:border-orange-500/40 text-primary flex items-center gap-1.5"
+                >
+                  <Sliders className="size-3.5 text-amber-400" /> Evaluate
+                </button>
+
                 {intern.offerStatus !== "Certificate Issued" && (
                   <button
                     onClick={() => handleIssueCert(intern.name)}
                     className="px-3.5 py-1.5 rounded-xl font-bold bg-teal-500 text-white hover:brightness-110 flex items-center gap-1.5 shadow-sm"
                   >
-                    <Award className="size-3.5" /> Issue Certificate & LOR
+                    <Award className="size-3.5" /> Issue Cert &amp; LOR
                   </button>
                 )}
               </div>
             </div>
 
-            {/* Performance Stats & Badges */}
+            {/* Attendance & Performance Score Controls */}
             <div className="grid sm:grid-cols-3 gap-3 text-xs">
-              <div className="surface-2 p-3.5 rounded-2xl border border-border space-y-0.5">
-                <span className="text-muted text-[10px] font-bold uppercase">Attendance</span>
-                <p className="font-bold text-teal-400 text-sm">{intern.attendancePct}% Present</p>
+              <div className="surface-2 p-3.5 rounded-2xl border border-border space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted text-[10px] font-bold uppercase">Attendance Tracker</span>
+                  <span className="font-bold text-teal-400">{intern.attendancePct}%</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => handleMarkAttendance(intern.id, 2)}
+                    className="flex-1 py-1 rounded-lg bg-teal-500/10 text-teal-400 font-bold hover:bg-teal-500/20 border border-teal-500/20"
+                  >
+                    + Present
+                  </button>
+                  <button
+                    onClick={() => handleMarkAttendance(intern.id, -2)}
+                    className="flex-1 py-1 rounded-lg bg-red-500/10 text-red-400 font-bold hover:bg-red-500/20 border border-red-500/20"
+                  >
+                    - Absent
+                  </button>
+                </div>
               </div>
 
-              <div className="surface-2 p-3.5 rounded-2xl border border-border space-y-0.5">
-                <span className="text-muted text-[10px] font-bold uppercase">Sincereness & Score</span>
-                <p className="font-bold text-amber-400 text-sm">{intern.performanceScore} / 100</p>
+              <div className="surface-2 p-3.5 rounded-2xl border border-border space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted text-[10px] font-bold uppercase">Sprint Score</span>
+                  <span className="font-bold text-amber-400">{intern.performanceScore} / 100</span>
+                </div>
+                <input
+                  type="range"
+                  min="50"
+                  max="100"
+                  value={intern.performanceScore}
+                  onChange={(e) => handleUpdateScore(intern.id, Number(e.target.value))}
+                  className="w-full accent-amber-500 cursor-pointer"
+                />
               </div>
 
-              <div className="surface-2 p-3.5 rounded-2xl border border-border space-y-0.5">
-                <span className="text-muted text-[10px] font-bold uppercase">Stipend Rate</span>
+              <div className="surface-2 p-3.5 rounded-2xl border border-border space-y-1">
+                <span className="text-muted text-[10px] font-bold uppercase">Stipend Monthly</span>
                 <p className="font-mono font-bold text-primary text-sm">{intern.stipendMonthly}</p>
               </div>
             </div>
@@ -455,10 +507,67 @@ export default function AdminInternsPage() {
                   Cancel
                 </button>
                 <button type="submit" className="px-6 py-2 rounded-xl font-bold bg-orange-500 text-white hover:brightness-110 shadow-md">
-                  Enroll Intern & Send Offer
+                  Enroll Intern &amp; Send Offer
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* EVALUATE INTERN MODAL */}
+      {selectedInternForEval && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-up">
+          <div className="surface border border-orange-500/40 rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-5 shadow-2xl relative">
+            <div className="flex items-center justify-between pb-3 border-b border-border">
+              <div className="space-y-0.5">
+                <h3 className="font-display text-lg font-bold text-primary flex items-center gap-2">
+                  <Sliders className="size-5 text-amber-400" /> Evaluate Intern Performance
+                </h3>
+                <p className="text-xs text-muted">{selectedInternForEval.name} ({selectedInternForEval.college})</p>
+              </div>
+              <button onClick={() => setSelectedInternForEval(null)} className="text-xs text-muted font-bold px-2 py-1 surface-2 rounded-lg">
+                ✕ Close
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div className="surface-2 p-4 rounded-2xl border border-border space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-primary">Performance Rating Score</span>
+                  <span className="font-extrabold text-amber-400 text-sm">{selectedInternForEval.performanceScore} / 100</span>
+                </div>
+                <input
+                  type="range"
+                  min="50"
+                  max="100"
+                  value={selectedInternForEval.performanceScore}
+                  onChange={(e) => {
+                    const newScore = Number(e.target.value);
+                    handleUpdateScore(selectedInternForEval.id, newScore);
+                    setSelectedInternForEval({ ...selectedInternForEval, performanceScore: newScore });
+                  }}
+                  className="w-full accent-amber-500 cursor-pointer"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <span className="font-bold text-primary">Badges Awarded</span>
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {selectedInternForEval.badges.map((b) => (
+                    <span key={b} className="px-2.5 py-1 rounded-full text-[10px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/20">
+                      🏆 {b}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button onClick={() => setSelectedInternForEval(null)} className="px-6 py-2 rounded-xl font-bold bg-orange-500 text-white hover:brightness-110 shadow-md">
+                Save Evaluation
+              </button>
+            </div>
           </div>
         </div>
       )}

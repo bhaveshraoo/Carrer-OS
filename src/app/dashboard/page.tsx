@@ -30,9 +30,18 @@ export default async function DashboardPage() {
   const { data: rawCompanies } = await table(supabase, "companies")
     .select("id, name");
 
-  // Query DSA questions count
-  const { data: rawQuestions } = await table(supabase, "dsa_questions")
-    .select("id, topic");
+  // Fast Parallel Batch Fetch (1 single roundtrip for all 2,274 questions!)
+  const [chunk1, chunk2, chunk3] = await Promise.all([
+    (supabase as any).from("dsa_questions").select("id, topic").range(0, 999),
+    (supabase as any).from("dsa_questions").select("id, topic").range(1000, 1999),
+    (supabase as any).from("dsa_questions").select("id, topic").range(2000, 2999),
+  ]);
+
+  const rawQuestions = [
+    ...(chunk1.data || []),
+    ...(chunk2.data || []),
+    ...(chunk3.data || []),
+  ];
 
   const targetedSet = new Set((targets ?? []).map((t) => t.company_id));
   const targetCompanies = (rawCompanies ?? [])

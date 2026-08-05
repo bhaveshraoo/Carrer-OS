@@ -11,7 +11,18 @@ export default async function PrepPage() {
   const { data: rawCompanies } = await table(supabase, "companies").select("*");
   const { data: targets }      = await table(supabase, "user_company_targets").select("*").eq("user_id", user.id);
   const { data: allTopics }    = await table(supabase, "company_dsa_topics").select("*");
-  const { data: rawQuestions } = await table(supabase, "dsa_questions").select("*");
+  // Fast Parallel Batch Fetch (1 single roundtrip for all 2,274 questions!)
+  const [chunk1, chunk2, chunk3] = await Promise.all([
+    (supabase as any).from("dsa_questions").select("*").range(0, 999),
+    (supabase as any).from("dsa_questions").select("*").range(1000, 1999),
+    (supabase as any).from("dsa_questions").select("*").range(2000, 2999),
+  ]);
+
+  const rawQuestions = [
+    ...(chunk1.data || []),
+    ...(chunk2.data || []),
+    ...(chunk3.data || []),
+  ];
 
   const targetedCompanyIds = (targets ?? []).map((t) => t.company_id);
   const targetedSet        = new Set(targetedCompanyIds);
@@ -30,13 +41,22 @@ export default async function PrepPage() {
   const questionsByTopic: Record<string, QuestionData[]> = {};
   for (const q of rawQuestions ?? []) {
     const list = questionsByTopic[q.topic] || [];
+    const roadmapMatch = (q.solution_explanation || "").match(/Roadmaps:\s*([^\n]+)/i);
+    const roadmaps = roadmapMatch
+      ? roadmapMatch[1].split(",").map((s: string) => s.trim().toLowerCase())
+      : ["easy-to-medium"];
+
     list.push({
       id: q.id,
       title: q.title,
       topic: q.topic,
       difficulty: q.difficulty,
       prompt: q.prompt,
+      solution_javascript: q.solution_javascript,
+      solution_python: q.solution_python,
+      solution_cpp: q.solution_cpp,
       solution_explanation: q.solution_explanation,
+      roadmaps,
     });
     questionsByTopic[q.topic] = list;
   }

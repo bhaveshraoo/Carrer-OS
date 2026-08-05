@@ -87,6 +87,35 @@ Return JSON in this EXACT schema:
 }`,
     });
 
+    // ── SYNC GEMINI ATS SCORE TO SUPABASE SO ALL REPORT CARDS MATCH 100% ──
+    const geminiScore = Math.max(0, Math.min(100, result.ats_score));
+
+    // Fetch existing analysis for this resume if present
+    const { data: existingAnalyses } = await table(supabase, "resume_analyses")
+      .select("*")
+      .eq("resume_id", latestResume.id);
+    const existingAnalysis = existingAnalyses?.[0];
+
+    if (existingAnalysis) {
+      const currentReport = (existingAnalysis.report as any) || {};
+      const updatedReport = {
+        ...currentReport,
+        overallScore: geminiScore,
+        scores: {
+          ...(currentReport.scores || {}),
+          resume_score: geminiScore,
+          ats_score: geminiScore,
+        },
+      };
+
+      await table(supabase, "resume_analyses")
+        .update({
+          resume_score: geminiScore,
+          report: updatedReport,
+        })
+        .eq("id", existingAnalysis.id);
+    }
+
     return NextResponse.json(result);
   } catch (err: any) {
     console.error("Gemini ATS Audit error:", err);

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { BrandLogo } from "@/components/brand-logo";
 
 const navLinks = [
   { href: "/dashboard",          label: "Dashboard", icon: LayoutDashboard, exact: true },
@@ -66,16 +67,10 @@ export function DashboardNav({
           borderBottom: "1px solid var(--border)",
         }}
       >
-        <div className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 h-16 flex items-center justify-between">
           {/* Logo + Nav links */}
           <div className="flex items-center gap-6">
-            <Link
-              href="/dashboard"
-              className="font-display text-xl font-semibold transition-opacity hover:opacity-80 shrink-0"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Career<span style={{ color: "var(--orange)" }}>OS</span>
-            </Link>
+            <BrandLogo href="/dashboard" size="md" className="-ml-1" />
 
             <nav className="hidden md:flex items-center gap-1">
               {navLinks.map((link) => {

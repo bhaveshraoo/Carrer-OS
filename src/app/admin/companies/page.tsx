@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Building2,
@@ -13,8 +13,11 @@ import {
   Zap,
   X,
   Search,
+  Database,
+  RotateCcw,
 } from "lucide-react";
 import { useNotifications } from "@/components/notifications/notification-provider";
+import { createClient } from "@/lib/supabase/client";
 
 interface CompanyProfile {
   id: string;
@@ -56,6 +59,7 @@ export default function AdminCompaniesPage() {
   const { notify } = useNotifications();
   const [companies, setCompanies] = useState<CompanyProfile[]>(INITIAL_COMPANIES);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // Form State
   const [name, setName] = useState("");
@@ -64,25 +68,67 @@ export default function AdminCompaniesPage() {
   const [roundsCount, setRoundsCount] = useState(4);
   const [skillsInput, setSkillsInput] = useState("DSA, System Design, React, Node.js");
 
-  function handleCreateCompany(e: React.FormEvent) {
+  const loadCompanies = async () => {
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.from("companies").select("*");
+      if (data && data.length > 0) {
+        const mapped: CompanyProfile[] = data.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          tier: (c.metadata?.tier as any) || "Product Enterprise",
+          ctcPackage: (c.metadata?.ctc as any) || "₹30 LPA",
+          roundsCount: 4,
+          requiredSkills: Array.isArray(c.metadata?.skills)
+            ? c.metadata.skills
+            : ["DSA", "System Design"],
+        }));
+        setCompanies(mapped);
+      }
+    } catch (e) {
+      console.error("Error loading companies from Supabase", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCompanies();
+  }, []);
+
+  async function handleCreateCompany(e: React.FormEvent) {
     e.preventDefault();
+    const cleanSkills = skillsInput.split(",").map((s) => s.trim()).filter(Boolean);
+
     const newComp: CompanyProfile = {
       id: `comp-${Date.now()}`,
       name,
       tier,
       ctcPackage,
       roundsCount: Number(roundsCount),
-      requiredSkills: skillsInput.split(",").map((s) => s.trim()),
+      requiredSkills: cleanSkills,
     };
 
     setCompanies([newComp, ...companies]);
     setShowCreateModal(false);
 
+    try {
+      const supabase = createClient();
+      await (supabase.from("companies") as any).insert({
+        name,
+        slug: name.toLowerCase().replace(/[^a-z0-9]/g, "-"),
+        metadata: { tier, ctc: ctcPackage, skills: cleanSkills },
+      });
+    } catch (err) {
+      console.error("Error inserting company to Supabase", err);
+    }
+
     notify({
       type: "success",
       icon: "🏢",
       title: "Company Profile Published!",
-      body: `Added "${name}" with hiring process map and CTC details.`,
+      body: `Added "${name}" to Supabase database and hiring maps.`,
       autoDismiss: 4000,
     });
   }
@@ -95,7 +141,7 @@ export default function AdminCompaniesPage() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold text-blue-400 bg-blue-500/15 border border-blue-500/30">
-              <Building2 className="size-3.5 text-blue-400" /> Required Tag: Company Curator
+              <Database className="size-3.5 text-blue-400" /> Supabase DB Connected: Target Companies
             </div>
             <h1 className="font-display text-3xl font-extrabold text-primary tracking-tight">
               Target Company Intelligence Curator
@@ -105,12 +151,22 @@ export default function AdminCompaniesPage() {
             </p>
           </div>
 
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="px-5 py-3 rounded-2xl font-bold text-xs bg-blue-600 text-white hover:brightness-110 shadow-md shadow-blue-600/20 shrink-0 flex items-center gap-1.5"
-          >
-            <Plus className="size-4" /> Add Target Company
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={loadCompanies}
+              className="p-2.5 rounded-2xl surface-2 text-secondary hover:text-primary border border-border"
+              title="Refresh from Supabase"
+            >
+              <RotateCcw className={`size-4 ${loading ? "animate-spin" : ""}`} />
+            </button>
+
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-5 py-3 rounded-2xl font-bold text-xs bg-blue-600 text-white hover:brightness-110 shadow-md shadow-blue-600/20 shrink-0 flex items-center gap-1.5"
+            >
+              <Plus className="size-4" /> Add Target Company
+            </button>
+          </div>
         </div>
       </div>
 
@@ -118,7 +174,7 @@ export default function AdminCompaniesPage() {
       <div className="space-y-4">
         <div className="flex items-center justify-between text-xs font-bold text-muted uppercase tracking-wider px-2">
           <span>Target Companies ({companies.length})</span>
-          <span>CTC & Rounds</span>
+          <span>CTC &amp; Rounds</span>
         </div>
 
         <div className="space-y-3">

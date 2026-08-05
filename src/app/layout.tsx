@@ -9,6 +9,11 @@ export const metadata: Metadata = {
   description:
     "One AI-native platform for resume intelligence, company prep, and DSA readiness — built for India's campus placement season.",
   keywords: ["career", "resume", "ATS", "DSA prep", "campus placement", "India", "placements"],
+  icons: {
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
+  },
   openGraph: {
     title: "CareerOS — The AI Career Operating System",
     description: "Resume intelligence, company prep, and DSA readiness in one platform.",
@@ -25,6 +30,9 @@ export default function RootLayout({
     <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       {/* Inline script to prevent theme flash before hydration */}
       <head>
+        <link rel="icon" href="/favicon.png" type="image/png" sizes="any" />
+        <link rel="shortcut icon" href="/favicon.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/favicon.png" />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){var t=localStorage.getItem('careeros-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})()`,

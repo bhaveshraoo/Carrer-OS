@@ -38,6 +38,7 @@
   --text-secondary: #5C524A;
   --text-muted:     #948980;
   --text-inverse:   #FBF8F1;
+  --brand-career-text: #1C1815;
 
   --orange:         #F97316;
   --orange-dim:     #FED7AA;
@@ -81,6 +82,7 @@
   --text-secondary: #8F8478;
   --text-muted:     #655D55;
   --text-inverse:   #141210;
+  --brand-career-text: #FFFFFF;
 
   /* Orange — slightly muted, warm burnt sienna not neon */
   --orange:         #C96A20;
@@ -113,6 +115,20 @@
   --shadow-orange:  0 0 0 3px rgba(201,106,32,0.22);
 }
 
+/* Brand Logo Theme Rules: Black in light theme, Pure White in dark theme */
+.brand-career-text {
+  color: #1C1815 !important;
+}
+
+[data-theme="dark"] .brand-career-text,
+html[data-theme="dark"] .brand-career-text,
+.dark .brand-career-text {
+  color: #FFFFFF !important;
+}
+
+.brand-os-text {
+  color: var(--orange, #F97316) !important;
+}
 
 /* ── Tailwind v4 theme bridge ── */
 @theme inline {

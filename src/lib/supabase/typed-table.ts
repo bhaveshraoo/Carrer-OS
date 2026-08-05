@@ -31,6 +31,8 @@ export function table<T extends keyof Tables>(supabase: SupabaseClient, name: T)
 
   interface Filterable<R> {
     eq(column: string, value: unknown): Filterable<R>;
+    range(from: number, to: number): Filterable<R>;
+    limit(count: number): Filterable<R>;
     single(): PromiseLike<{ data: R | null; error: { message: string } | null }>;
     then: PromiseLike<{ data: R[] | null; error: { message: string } | null }>["then"];
   }

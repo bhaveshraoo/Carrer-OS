@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   Trophy,
 } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
 
 const subScores = [
   { label: "ATS",            value: 91 },
@@ -56,9 +57,7 @@ export default function Home() {
         style={{ borderBottom: "1px solid var(--border)" }}
       >
         <div className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
-          <span className="font-display text-xl font-semibold">
-            Career<span style={{ color: "var(--orange)" }}>OS</span>
-          </span>
+          <BrandLogo href="/" />
           <nav className="hidden sm:flex items-center gap-8 text-sm" style={{ color: "var(--text-secondary)" }}>
             <a href="#scrollytelling" className="hover:opacity-80 transition-opacity">6-Step Story</a>
             <a href="#projects" className="hover:opacity-80 transition-opacity">Internship Hub</a>
