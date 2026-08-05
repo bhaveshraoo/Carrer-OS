@@ -33,3 +33,17 @@ next-env.d.ts
 
 # gemini
 .gemini/
+
+# ignored documentation & internal data folders
+README.md
+readme.md
+AGENTS.md
+agents.md
+CLAUDE.md
+claude.md
+company/
+Company/
+docs/
+Docs/
+dsa question bank/
+dsa-question-bank/
