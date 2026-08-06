@@ -152,7 +152,7 @@ export default function LoginPage() {
                     : "text-secondary hover:text-primary"
                 }`}
               >
-                ⚡ Quick Sign In
+                ⚡ Magic Link
               </button>
               <button
                 type="button"
@@ -181,7 +181,7 @@ export default function LoginPage() {
 
               <div className="flex items-center gap-3 py-1">
                 <div className="h-px flex-1 border-b border-border" />
-                <span className="text-[10px] font-bold text-muted uppercase tracking-wider">or sign in with email</span>
+                <span className="text-[10px] font-bold text-muted uppercase tracking-wider">or sign in with magic link</span>
                 <div className="h-px flex-1 border-b border-border" />
               </div>
 
@@ -192,7 +192,9 @@ export default function LoginPage() {
                   </label>
                   <input
                     id="email"
+                    name="email"
                     type="email"
+                    autoComplete="email"
                     placeholder="you@college.edu"
                     required
                     value={email}
@@ -230,7 +232,9 @@ export default function LoginPage() {
                 </label>
                 <input
                   id="pwEmail"
+                  name="email"
                   type="email"
+                  autoComplete="email"
                   placeholder="you@college.edu"
                   required
                   value={pwEmail}
@@ -245,7 +249,9 @@ export default function LoginPage() {
                 </label>
                 <input
                   id="password"
+                  name="password"
                   type="password"
+                  autoComplete="current-password"
                   placeholder="••••••••"
                   required
                   value={password}

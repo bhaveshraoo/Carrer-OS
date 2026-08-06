@@ -159,7 +159,7 @@ export default function SignupPage() {
                     : "text-secondary hover:text-primary"
                 }`}
               >
-                ⚡ Quick Signup
+                ⚡ Magic Link
               </button>
               <button
                 type="button"
@@ -187,7 +187,7 @@ export default function SignupPage() {
 
               <div className="flex items-center gap-3 py-1">
                 <div className="h-px flex-1 border-b border-border" />
-                <span className="text-[10px] font-bold text-muted uppercase tracking-wider">or sign up with email</span>
+                <span className="text-[10px] font-bold text-muted uppercase tracking-wider">or sign up with magic link</span>
                 <div className="h-px flex-1 border-b border-border" />
               </div>
 
@@ -198,7 +198,9 @@ export default function SignupPage() {
                   </label>
                   <input
                     id="email"
+                    name="email"
                     type="email"
+                    autoComplete="email"
                     placeholder="you@college.edu"
                     required
                     value={email}
@@ -236,6 +238,9 @@ export default function SignupPage() {
                 </label>
                 <input
                   id="fullName"
+                  name="name"
+                  type="text"
+                  autoComplete="name"
                   placeholder="Rahul Sharma"
                   required
                   value={fullName}
@@ -250,6 +255,9 @@ export default function SignupPage() {
                 </label>
                 <input
                   id="username"
+                  name="username"
+                  type="text"
+                  autoComplete="username"
                   placeholder="rahul_sharma"
                   required
                   pattern="[a-zA-Z0-9_]{3,20}"
@@ -266,7 +274,9 @@ export default function SignupPage() {
                 </label>
                 <input
                   id="pwEmail"
+                  name="email"
                   type="email"
+                  autoComplete="email"
                   placeholder="you@college.edu"
                   required
                   value={pwEmail}
@@ -281,7 +291,9 @@ export default function SignupPage() {
                 </label>
                 <input
                   id="password"
+                  name="password"
                   type="password"
+                  autoComplete="new-password"
                   placeholder="••••••••"
                   required
                   minLength={8}
