@@ -54,8 +54,10 @@ export default function InterviewSimulatorPage({
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [isSpeakingQuestion, setIsSpeakingQuestion] = useState(false);
   const [showStarHelper, setShowStarHelper] = useState(false);
+  const [endingInterview, setEndingInterview] = useState(false);
 
   const answerStartTimeRef = useRef<number>(Date.now());
+
 
   // Hooks
   const { isListening, transcript, startListening, stopListening, setTranscript } = useSpeechRecognition();
@@ -196,7 +198,9 @@ export default function InterviewSimulatorPage({
       window.speechSynthesis.cancel();
     }
     setTimerActive(false);
-    setInterviewerStatus("Finalizing Recruiter Report & Learning Roadmap...");
+    setEndingInterview(true);
+    setInterviewerStatus("Ending interview... Please wait");
+
 
     try {
       const res = await fetch("/api/interview/end", {
@@ -486,12 +490,37 @@ export default function InterviewSimulatorPage({
 
             <button
               onClick={handleFinishInterview}
-              className="px-4 py-3.5 rounded-2xl bg-muted hover:bg-rose-500/10 text-muted-foreground hover:text-rose-600 border border-border text-xs font-bold transition-all"
+              disabled={endingInterview || submittingAnswer}
+              className="px-4 py-3.5 rounded-2xl bg-muted hover:bg-rose-500/10 text-muted-foreground hover:text-rose-600 border border-border text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-2"
             >
-              End Interview Early
+              {endingInterview ? (
+                <>
+                  <Loader2 className="size-4 animate-spin text-rose-500" /> Ending interview... Please wait
+                </>
+              ) : (
+                "End Interview Early"
+              )}
             </button>
           </div>
         </div>
+
+        {/* Ending Interview Overlay Modal */}
+        {endingInterview && (
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <div className="p-8 rounded-3xl bg-card border border-border/80 shadow-2xl max-w-md w-full text-center space-y-4 animate-fade-in">
+              <div className="size-16 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20 flex items-center justify-center mx-auto shadow-inner">
+                <Loader2 className="size-8 animate-spin" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-display text-xl font-extrabold text-foreground">Ending Interview... Please Wait</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Gemini is evaluating your full spoken transcript, verifying technical depth, and finalizing your strict executive report...
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
 
         {/* Right Column: Local Camera Feed & Room Information */}
         <div className="lg:col-span-4 space-y-6">

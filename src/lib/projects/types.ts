@@ -6,7 +6,7 @@ export interface Project {
   productIdea: string;
   difficulty: "Beginner" | "Intermediate" | "Advanced" | "Expert";
   requiredSkills: string[];
-  domainsRequired: ("Frontend" | "Backend" | "AI/ML" | "UI UX" | "DevOps" | "Testing" | "Product")[];
+  domainsRequired: ("Frontend" | "Backend" | "AI/ML" | "UI UX" | "DevOps" | "Testing" | "Product" | "Full Stack")[];
   teamSize: number;
   filledSeats: number;
   remainingSeats: number;
@@ -32,7 +32,7 @@ export interface Project {
   stipend: string;
   rewards: string[];
   matchPercentage?: number;
-  category: "AI" | "Web Development" | "Mobile" | "DevOps" | "Cyber Security" | "Blockchain" | "UI UX" | "ML" | "Data Science" | "Open Source";
+  category: "AI" | "AI Track" | "Web Development" | "Mobile" | "DevOps" | "Cyber Security" | "Blockchain" | "UI UX" | "ML" | "ML Systems" | "Data Science" | "Open Source";
 }
 
 export interface ProjectApplication {

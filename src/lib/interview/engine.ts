@@ -42,9 +42,21 @@ export interface FinalReportOutput {
   confidence_score: number;
   behavior_score: number;
   hiring_recommendation: "Strong Hire" | "Hire" | "Leaning Hire" | "No Hire";
+  candidate_verdict_reason?: string;
   strengths: string[];
   weaknesses: string[];
+  red_flags?: string[];
+  missing_critical_concepts?: string[];
   interview_summary: string;
+  question_evaluations?: Array<{
+    question_number: number;
+    question_text: string;
+    answer_text: string;
+    score: number;
+    feedback: string;
+    key_points_covered: string[];
+    missing_aspects: string[];
+  }>;
   learning_roadmap: Array<{
     step: number;
     topic: string;
@@ -140,7 +152,47 @@ export async function evaluateAnswerAndGetNextQuestion(params: {
   memory: InterviewMemory;
   conversation_history: Array<{ question: string; answer: string }>;
 }): Promise<NextQuestionOutput> {
+  const trimmedAnswer = (params.transcript || "").trim();
+  const wordCount = trimmedAnswer ? trimmedAnswer.split(/\s+/).length : 0;
+
+  // Strict local handling for empty, silent, or minimal answers
+  if (wordCount < 3) {
+    const isFinal = params.remaining_minutes <= 3 || params.question_number >= 8;
+    return {
+      evaluation: {
+        clarity_score: 0,
+        relevance_score: 0,
+        technical_depth_score: 0,
+        feedback: "Candidate remained silent or did not provide a verbal answer.",
+        key_points_covered: [],
+        missing_aspects: ["Verbal explanation", "Technical response", "Concept elaboration"],
+      },
+      memory_update: {
+        strong_skills: params.memory.strong_skills,
+        weak_skills: Array.from(new Set([...params.memory.weak_skills, "Verbal Communication", params.current_section])),
+        communication_rating: "No Answer Provided",
+        confidence_score: Math.max(0, params.memory.confidence_score - 25),
+        topics_covered: Array.from(new Set([...params.memory.topics_covered, params.current_section])),
+        resume_references: params.memory.resume_references,
+      },
+      interviewer_action: isFinal ? "end_interview" : "next_topic",
+      interviewer_response: isFinal
+        ? "I noticed you didn't provide an answer to this question. That concludes our discussion for today."
+        : "I didn't catch an answer for that. Let's move on to the next question.",
+      next_question_text: isFinal
+        ? "Do you have any final questions before we conclude?"
+        : `Let's discuss ${params.session.tech_stack[0] || "core architecture"}. Can you explain how you handle production error logging?`,
+      section: params.current_section,
+      is_final_question: isFinal,
+    };
+  }
+
   const prompt = `You are a real interviewer (${params.session.personality}) at ${params.session.company_name} conducting a ${params.session.interview_type} interview for ${params.session.job_role}.
+
+STRICT EVALUATION RULES:
+- Evaluate STRICTLY based on what the candidate actually said in the transcript.
+- If the answer is vague, off-topic, or lacks technical depth, give low scores (0-40).
+- Only award high scores (>75) if the candidate provided clear technical detail, exact concepts, or trade-off reasoning.
 
 Current Section: ${params.current_section} (Question #${params.question_number})
 Time Remaining: ${params.remaining_minutes} minutes.
@@ -189,7 +241,7 @@ Respond ONLY with valid JSON matching this schema:
 
   try {
     const result = await generateJson<NextQuestionOutput>({
-      system: `You are acting strictly as an interviewer (${params.session.personality}). Return ONLY valid JSON.`,
+      system: `You are acting strictly as an interviewer (${params.session.personality}). Enforce strict grading based only on spoken answers. Return ONLY valid JSON.`,
       prompt,
     });
     if (result && result.next_question_text) {
@@ -199,31 +251,34 @@ Respond ONLY with valid JSON matching this schema:
     console.warn("Notice: Next question evaluation fallback used:", err);
   }
 
-  // Fallback next question
+  // Fallback next question with word count penalty check
   const isFinal = params.remaining_minutes <= 3 || params.question_number >= 8;
+  const isLowQuality = wordCount < 15;
   return {
     evaluation: {
-      clarity_score: 80,
-      relevance_score: 85,
-      technical_depth_score: 75,
-      feedback: "Good attempt explaining your approach.",
-      key_points_covered: ["Core concept explanation"],
-      missing_aspects: ["Deep performance trade-offs"],
+      clarity_score: isLowQuality ? 25 : 70,
+      relevance_score: isLowQuality ? 20 : 75,
+      technical_depth_score: isLowQuality ? 15 : 65,
+      feedback: isLowQuality
+        ? "Answer was very brief and lacked technical detail or explanation."
+        : "Answer addressed the surface question but lacked deep architectural trade-offs.",
+      key_points_covered: isLowQuality ? [] : ["Basic response"],
+      missing_aspects: ["Big-O Complexity", "Edge-case handling", "Quantified results"],
     },
     memory_update: {
       strong_skills: params.memory.strong_skills,
-      weak_skills: params.memory.weak_skills,
-      communication_rating: "Good",
-      confidence_score: 80,
-      topics_covered: [...params.memory.topics_covered, params.current_section],
+      weak_skills: isLowQuality ? Array.from(new Set([...params.memory.weak_skills, "Detailed Elaboration"])) : params.memory.weak_skills,
+      communication_rating: isLowQuality ? "Needs Improvement" : "Fair",
+      confidence_score: isLowQuality ? 30 : 70,
+      topics_covered: Array.from(new Set([...params.memory.topics_covered, params.current_section])),
       resume_references: params.memory.resume_references,
     },
     interviewer_action: isFinal ? "end_interview" : "next_topic",
     interviewer_response: isFinal
-      ? "Thank you for sharing your experience. We are wrapping up our discussion today."
-      : "That makes sense. Let's move on to the next topic.",
+      ? "Thank you for participating today. That concludes our interview session."
+      : "Understood. Let's move on to the next topic.",
     next_question_text: isFinal
-      ? "Do you have any final questions for me about the role or company culture?"
+      ? "Do you have any final questions for me?"
       : `How do you handle scaling and error handling when deploying ${params.session.tech_stack[0] || "services"} in production?`,
     section: params.current_section,
     is_final_question: isFinal,
@@ -236,7 +291,7 @@ Respond ONLY with valid JSON matching this schema:
 export async function generateFinalInterviewReport(params: {
   session: InterviewSession;
   memory: InterviewMemory;
-  full_transcript: Array<{ question: string; answer: string; evaluation?: any }>;
+  full_transcript: Array<{ question: string; answer: string }>;
   analytics: {
     avg_speaking_speed_wpm: number;
     filler_words_total: number;
@@ -245,82 +300,206 @@ export async function generateFinalInterviewReport(params: {
     low_noise_pct: number;
   };
 }): Promise<FinalReportOutput> {
-  const prompt = `Generate an authentic, production-grade Recruiter Evaluation Report for candidate interviewed for ${params.session.job_role} at ${params.session.company_name}.
+  // Compute total spoken words across the entire transcript
+  const allSpokenText = params.full_transcript.map((t) => (t.answer || "").trim()).join(" ");
+  const totalWordsSpoken = allSpokenText ? allSpokenText.split(/\s+/).filter(Boolean).length : 0;
 
-Interview Type: ${params.session.interview_type}
-Difficulty: ${params.session.difficulty}
-Interviewer Profile: ${params.session.personality}
+  // STRICT ZERO RULE: If candidate said nothing or total words < 5 across the entire session
+  if (totalWordsSpoken < 5) {
+    return {
+      overall_score: 0,
+      communication_score: 0,
+      technical_score: 0,
+      problem_solving_score: 0,
+      confidence_score: 0,
+      behavior_score: 0,
+      hiring_recommendation: "No Hire",
+      candidate_verdict_reason: `REJECTED: The candidate remained silent and did not provide any verbal or written answers during the interview for ${params.session.job_role} at ${params.session.company_name}. Zero technical knowledge or communication capability was demonstrated.`,
+      strengths: [
+        "None — Candidate did not answer any interview questions",
+      ],
+      weaknesses: [
+        "Zero verbal communication provided during the session",
+        "Failed to answer all technical and behavioral questions asked",
+        "Complete lack of engagement with the interviewer",
+      ],
+      red_flags: [
+        "Candidate total silence / complete failure to participate in the interview",
+      ],
+      missing_critical_concepts: [
+        "All required technical & domain concepts for the role",
+      ],
+      interview_summary: `The candidate initiated a ${params.session.duration_minutes}-minute ${params.session.interview_type} mock interview for the role of ${params.session.job_role} at ${params.session.company_name}.\n\nDuring the session, the candidate provided zero verbal responses across all questions asked (0 total words recorded).\n\nFinal Recommendation: NO HIRE. Score: 0/100. Candidate must re-interview and verbally articulate answers to receive a valid technical evaluation.`,
+      question_evaluations: params.full_transcript.map((item, idx) => ({
+        question_number: idx + 1,
+        question_text: item.question,
+        answer_text: item.answer || "[No verbal response recorded / Candidate was silent]",
+        score: 0,
+        feedback: "No answer provided by candidate.",
+        key_points_covered: [],
+        missing_aspects: ["Entire answer missing"],
+      })),
+      learning_roadmap: [
+        {
+          step: 1,
+          topic: "Verbal Articulation & Interview Practice",
+          action: "Practice speaking answers out loud in 60-90 second structured formats using the STAR framework.",
+          resources: "CareerOS Voice Communication Fundamentals",
+        },
+        {
+          step: 2,
+          topic: "Core Technical Concepts",
+          action: "Review baseline technical concepts for your target role so you can comfortably explain solutions during mock sessions.",
+          resources: "CareerOS DSA & System Architecture Roadmaps",
+        },
+      ],
+    };
+  }
 
-Candidate Performance Summary:
-- Average Speaking Speed: ${params.analytics.avg_speaking_speed_wpm} WPM
-- Filler Words Count: ${params.analytics.filler_words_total}
-- Confirmed Strong Skills: ${params.memory.strong_skills.join(", ") || "General CS"}
-- Areas for Improvement: ${params.memory.weak_skills.join(", ") || "Advanced System Optimization"}
-- Confidence Rating: ${params.memory.confidence_score}%
+  const prompt = `You are a Strict Senior Engineering Bar Raiser & Executive Technical Recruiter evaluating a candidate for the role of ${params.session.job_role} at ${params.session.company_name}.
 
-Interview Q&A Transcript:
-${params.full_transcript.map((t, i) => `Q${i + 1}: ${t.question}\nA: ${t.answer}`).join("\n\n")}
+CRITICAL MANDATES FOR STRICT SCORING:
+- You MUST evaluate strictly based ONLY on what the candidate actually said in the transcript below.
+- Total Spoken Words in Session: ${totalWordsSpoken} words.
+- If total spoken words is very low (< 30 words), overall_score MUST NOT exceed 25/100, and recommendation MUST be 'No Hire'.
+- Do NOT hallucinate candidate strengths or give benefit of the doubt.
+- Penalize vague hand-waving, incorrect Big-O claims, missing edge-case handling, or lack of quantitative metrics.
 
-Return ONLY valid JSON matching this schema:
+Interview Details:
+- Target Role: ${params.session.job_role}
+- Company: ${params.session.company_name}
+- Round Type: ${params.session.interview_type}
+- Difficulty Standard: ${params.session.difficulty}
+- Interviewer Persona: ${params.session.personality}
+
+Candidate Spoken Performance Metrics:
+- Speaking Pace: ${params.analytics.avg_speaking_speed_wpm} WPM
+- Filler Words Used: ${params.analytics.filler_words_total}
+- Confirmed Skills Demonstrated: ${params.memory.strong_skills.join(", ") || "None confirmed"}
+- Weak / Struggling Concepts: ${params.memory.weak_skills.join(", ") || "General Technical Depth"}
+- Confidence Level: ${params.memory.confidence_score}%
+
+Complete Interview Q&A Transcript:
+${params.full_transcript.map((t, i) => `[Question ${i + 1}]: ${t.question}\n[Candidate Answer]: ${t.answer || "[No response]"}`).join("\n\n")}
+
+Evaluate the candidate across every dimension and return ONLY valid JSON matching this schema:
 {
-  "overall_score": 88,
-  "communication_score": 85,
-  "technical_score": 90,
-  "problem_solving_score": 86,
-  "confidence_score": 84,
-  "behavior_score": 88,
+  "overall_score": 78,
+  "communication_score": 75,
+  "technical_score": 80,
+  "problem_solving_score": 76,
+  "confidence_score": 78,
+  "behavior_score": 80,
   "hiring_recommendation": "Strong Hire" | "Hire" | "Leaning Hire" | "No Hire",
-  "strengths": ["3 to 4 specific strengths demonstrated during the interview"],
-  "weaknesses": ["2 to 3 constructive weaknesses"],
-  "interview_summary": "Detailed 3-paragraph recruiter evaluation summary of the candidate's performance",
+  "candidate_verdict_reason": "Detailed 2-3 sentence justification explaining the exact bar-raiser decision.",
+  "strengths": [
+    "3 to 4 specific technical strengths demonstrated during the interview with evidence"
+  ],
+  "weaknesses": [
+    "3 to 4 specific technical weaknesses or hand-waving instances observed"
+  ],
+  "red_flags": [
+    "High-severity mistakes, incorrect complexity claims, or missing core principles"
+  ],
+  "missing_critical_concepts": [
+    "Specific tech stack terms, design patterns, or algorithms the candidate failed to mention"
+  ],
+  "interview_summary": "Detailed 3-paragraph executive recruiter evaluation analyzing technical rigor, communication efficiency, and job readiness.",
+  "question_evaluations": [
+    {
+      "question_number": 1,
+      "question_text": "Full question text asked",
+      "answer_text": "Candidate spoken response summary",
+      "score": 75,
+      "feedback": "Strict technical critique of this answer",
+      "key_points_covered": ["Array of correct technical aspects"],
+      "missing_aspects": ["Array of missed requirements, edge cases, or trade-offs"]
+    }
+  ],
   "learning_roadmap": [
-    { "step": 1, "topic": "Topic Name", "action": "Exact actionable learning step", "resources": "Recommended guide / practice" }
+    {
+      "step": 1,
+      "topic": "Topic Title",
+      "action": "Actionable technical improvement task",
+      "resources": "Specific documentation or practice guide"
+    }
   ]
 }`;
 
   try {
     const result = await generateJson<FinalReportOutput>({
-      system: `You are an executive hiring bar raiser at ${params.session.company_name}. Output strictly valid JSON.`,
+      system: `You are an executive hiring bar raiser at ${params.session.company_name}. Enforce strict, evidence-based grading. Output strictly valid JSON.`,
       prompt,
     });
-    if (result && result.overall_score) {
+    if (result && typeof result.overall_score === "number") {
       return result;
     }
   } catch (err) {
     console.warn("Notice: Report generation fallback used:", err);
   }
 
-  // Fallback report
+  // Strict Fallback Report calibrated by actual word count
+  const isMinimal = totalWordsSpoken < 40;
+  const score = isMinimal ? 15 : 55;
+  const rec: "No Hire" | "Leaning Hire" = isMinimal ? "No Hire" : "Leaning Hire";
+
   return {
-    overall_score: 84,
-    communication_score: 82,
-    technical_score: 86,
-    problem_solving_score: 85,
-    confidence_score: 80,
-    behavior_score: 85,
-    hiring_recommendation: "Hire",
-    strengths: [
-      "Demonstrated strong problem-solving fundamentals and structured thinking",
-      `Clear understanding of core ${params.session.tech_stack[0] || "tech stack"} implementation details`,
-      "Communicated past project achievements with enthusiasm and clarity",
-    ],
+    overall_score: score,
+    communication_score: isMinimal ? 15 : 50,
+    technical_score: isMinimal ? 10 : 55,
+    problem_solving_score: isMinimal ? 10 : 50,
+    confidence_score: isMinimal ? 20 : 55,
+    behavior_score: isMinimal ? 20 : 60,
+    hiring_recommendation: rec,
+    candidate_verdict_reason: isMinimal
+      ? `REJECTED: Candidate provided very minimal verbal input (${totalWordsSpoken} words total) during the interview, failing to demonstrate basic competency for ${params.session.job_role}.`
+      : `The candidate provided partial answers for ${params.session.job_role}, but failed to elaborate on system trade-offs and complexity requirements expected by ${params.session.company_name}.`,
+    strengths: isMinimal
+      ? ["Attempted to initiate the session"]
+      : [
+          `Basic awareness of ${params.session.tech_stack[0] || "role requirements"}`,
+          "Responded to introductory questions",
+        ],
     weaknesses: [
-      "Could elaborate more deeply on system trade-offs under extreme concurrency",
-      "Occasional filler words during complex technical explanations",
+      "Incomplete or overly brief answers without technical justification",
+      "Did not state time or space complexity for algorithmic questions",
+      "Lack of quantitative metrics and concrete project achievements",
     ],
-    interview_summary: `The candidate completed a ${params.session.duration_minutes}-minute ${params.session.interview_type} interview for the ${params.session.job_role} position at ${params.session.company_name}.\n\nOverall, the candidate displayed solid engineering capability, articulate communication, and good alignment with the role requirements. They performed well in project deep-dives and technical architecture discussions.\n\nWith focused preparation on distributed system edge cases, the candidate will be a strong asset to the team.`,
+    red_flags: [
+      "Insufficient evidence of technical depth or coding capability",
+    ],
+    missing_critical_concepts: [
+      "Big-O Time & Space Complexity",
+      "System Architecture & Scaling Trade-offs",
+      "STAR Behavioral Method Precision",
+    ],
+    interview_summary: `The candidate completed a ${params.session.duration_minutes}-minute ${params.session.interview_type} mock interview for ${params.session.job_role} at ${params.session.company_name}.\n\nTotal spoken words recorded: ${totalWordsSpoken} words. The responses lacked the depth, precision, and structural clarity expected for this role.\n\nRecommendation: ${rec}. Score: ${score}/100.`,
+    question_evaluations: params.full_transcript.map((item, idx) => {
+      const qWords = (item.answer || "").trim().split(/\s+/).filter(Boolean).length;
+      return {
+        question_number: idx + 1,
+        question_text: item.question,
+        answer_text: item.answer || "[No verbal response recorded]",
+        score: qWords < 5 ? 0 : qWords < 15 ? 25 : 55,
+        feedback: qWords < 5
+          ? "No meaningful answer provided."
+          : "Answer was overly brief and missed core engineering trade-offs.",
+        key_points_covered: qWords >= 15 ? ["Basic attempt"] : [],
+        missing_aspects: ["Architectural trade-offs", "Big-O complexity analysis"],
+      };
+    }),
     learning_roadmap: [
       {
         step: 1,
-        topic: "Advanced Distributed Systems Trade-offs",
-        action: "Practice designing CAP theorem trade-offs and caching strategy bottlenecks under 100k QPS",
-        resources: "CareerOS System Design Roadmap & Case Studies",
+        topic: "Verbal Technical Elaboration",
+        action: "Practice articulating system design choices out loud in 90-second detailed answers.",
+        resources: "CareerOS Technical Communication Playbook",
       },
       {
         step: 2,
-        topic: "Pacing & Delivery",
-        action: "Practice timed 2-minute STAR behavioral responses with structured bullet points",
-        resources: "CareerOS Mock Audio Trainer",
+        topic: "Algorithmic & Complexity Analysis",
+        action: "Always state Big-O time and space complexity before presenting code solutions.",
+        resources: "CareerOS Algorithmic Rigor Guide",
       },
     ],
   };

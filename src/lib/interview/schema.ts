@@ -90,9 +90,21 @@ export interface InterviewReport {
   confidence_score: number; // 0 - 100
   behavior_score: number; // 0 - 100
   hiring_recommendation: "Strong Hire" | "Hire" | "Leaning Hire" | "No Hire";
+  candidate_verdict_reason?: string;
   strengths: string[];
   weaknesses: string[];
+  red_flags?: string[];
+  missing_critical_concepts?: string[];
   interview_summary: string;
+  question_evaluations?: Array<{
+    question_number: number;
+    question_text: string;
+    answer_text: string;
+    score: number;
+    feedback: string;
+    key_points_covered: string[];
+    missing_aspects: string[];
+  }>;
   learning_roadmap: Array<{
     step: number;
     topic: string;
@@ -101,3 +113,4 @@ export interface InterviewReport {
   }>;
   created_at: string;
 }
+

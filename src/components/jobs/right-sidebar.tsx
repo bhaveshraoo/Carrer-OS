@@ -39,15 +39,21 @@ export function JobPortalRightSidebar() {
               className="flex items-center justify-between p-2.5 rounded-2xl hover:bg-muted/60 transition-colors border border-transparent hover:border-border group"
             >
               <div className="flex items-center gap-3">
-                <div className="size-8 rounded-xl bg-background border border-border p-0.5 flex items-center justify-center shrink-0">
+                <div className="size-8 rounded-xl bg-background border border-border p-0.5 flex items-center justify-center shrink-0 relative overflow-hidden">
                   <img
                     src={c.logo}
                     alt={c.name}
                     className="w-full h-full object-contain"
                     onError={(e) => {
-                      (e.target as HTMLElement).style.display = "none";
+                      const target = e.target as HTMLElement;
+                      target.style.display = "none";
+                      const fallback = target.nextElementSibling as HTMLElement;
+                      if (fallback) fallback.classList.remove("hidden");
                     }}
                   />
+                  <div className="hidden size-full rounded-lg bg-gradient-to-br from-teal-500 to-amber-500 text-white font-extrabold text-[10px] flex items-center justify-center">
+                    {c.name.charAt(0).toUpperCase()}
+                  </div>
                 </div>
                 <div>
                   <h4 className="font-bold text-xs text-foreground group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">

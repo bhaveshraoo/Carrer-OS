@@ -335,23 +335,23 @@ export default function InterviewConfigPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-fade-in pb-16">
-      {/* Header Banner */}
-      <div className="relative overflow-hidden p-8 md:p-10 rounded-3xl bg-gradient-to-br from-teal-500/10 via-background to-amber-500/10 border border-teal-500/20 shadow-xs space-y-4">
-        <div className="inline-flex items-center gap-2 text-xs font-bold px-3 py-1 rounded-full bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/30">
-          <Video className="size-3.5 text-teal-500" /> Production-Grade AI Interview Simulator
+      {/* Header Banner (Matches Projects page surface hero card aesthetic) */}
+      <div className="relative overflow-hidden p-8 md:p-10 rounded-3xl surface border border-orange-500/30 shadow-sm space-y-4">
+        <div className="inline-flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/30">
+          <Video className="size-3.5 text-orange-500" /> Production-Grade AI Interview Simulator
         </div>
-        <h1 className="font-display text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight">
-          AI Mock Interview Engine
+        <h1 className="font-display text-3xl sm:text-4xl font-extrabold text-primary tracking-tight">
+          AI Mock Interview <span className="text-orange-500">Engine</span>
         </h1>
-        <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
-          Pick a role preset or build a custom interview. Speak naturally and receive a recruiter-grade evaluation with a personalised learning roadmap.
+        <p className="text-sm text-secondary leading-relaxed max-w-2xl font-medium">
+          Pick a role preset or build a custom interview. Speak naturally and receive a recruiter-grade evaluation with a personalized learning roadmap.
         </p>
-        <div className="flex flex-wrap gap-4 pt-2 text-xs font-semibold text-muted-foreground">
-          <span className="flex items-center gap-1.5 text-foreground">
+        <div className="flex flex-wrap gap-4 pt-2 text-xs font-semibold text-secondary">
+          <span className="flex items-center gap-1.5 text-primary font-bold">
             <ShieldCheck className="size-4 text-teal-500" /> 100% Local Privacy (No Video Stored)
           </span>
-          <span className="flex items-center gap-1.5 text-foreground">
-            <Zap className="size-4 text-amber-500" /> Voice-First Interaction
+          <span className="flex items-center gap-1.5 text-primary font-bold">
+            <Zap className="size-4 text-orange-500" /> Voice-First Realtime Interaction
           </span>
         </div>
       </div>
@@ -361,9 +361,9 @@ export default function InterviewConfigPage() {
         <div className="lg:col-span-8 space-y-6">
 
           {/* ── STEP 1: Role Preset Cards ── */}
-          <div className="p-6 rounded-3xl bg-card border border-border/80 shadow-xs space-y-5">
-            <h2 className="font-display text-base font-bold text-foreground flex items-center gap-2 border-b border-border/60 pb-3">
-              <Briefcase className="size-4 text-teal-500" /> Step 1 — Choose Your Interview Role
+          <div className="p-6 sm:p-8 rounded-3xl surface border border-border shadow-xs space-y-5">
+            <h2 className="font-display text-base font-extrabold text-primary flex items-center gap-2 border-b border-border pb-3">
+              <Briefcase className="size-4 text-orange-500" /> Step 1 — Choose Your Interview Role
             </h2>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -374,21 +374,21 @@ export default function InterviewConfigPage() {
                     key={preset.id}
                     type="button"
                     onClick={() => handlePresetSelect(preset.id)}
-                    className={`p-4 rounded-2xl border bg-gradient-to-br text-left transition-all duration-200 space-y-2 relative group ${
+                    className={`p-4 rounded-2xl border text-left transition-all duration-200 space-y-2 relative group cursor-pointer ${
                       isActive
-                        ? `${preset.color} shadow-lg scale-[1.02] ring-2 ring-teal-500/40`
-                        : `bg-muted/40 border-border hover:border-border/80 hover:scale-[1.01]`
+                        ? `bg-orange-500/10 border-2 border-orange-500 shadow-md scale-[1.02]`
+                        : `surface-2 border-border hover:border-orange-500/40 hover:scale-[1.01]`
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       {preset.icon}
                       {isActive && (
-                        <span className="size-5 rounded-full bg-teal-500 text-white flex items-center justify-center shadow-md">
+                        <span className="size-5 rounded-full bg-orange-500 text-white flex items-center justify-center shadow-xs">
                           <CheckCircle2 className="size-3" />
                         </span>
                       )}
                     </div>
-                    <p className="text-xs font-extrabold text-foreground leading-tight">{preset.label}</p>
+                    <p className="text-xs font-extrabold text-primary leading-tight">{preset.label}</p>
                   </button>
                 );
               })}
@@ -398,10 +398,10 @@ export default function InterviewConfigPage() {
             <div className="space-y-4 pt-2">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label htmlFor="target-job-role" className="text-xs font-bold text-foreground">
+                  <label htmlFor="target-job-role" className="text-xs font-bold text-primary">
                     Job Role *
                     {selectedPreset !== "custom" && (
-                      <span className="ml-2 text-[9px] font-bold text-teal-600 dark:text-teal-400 bg-teal-500/10 px-1.5 py-0.5 rounded-full border border-teal-500/20">
+                      <span className="ml-2 text-[9px] font-bold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/30">
                         Auto-filled
                       </span>
                     )}
@@ -413,12 +413,12 @@ export default function InterviewConfigPage() {
                     value={jobRole}
                     onChange={(e) => { setJobRole(e.target.value); setSelectedPreset("custom"); }}
                     placeholder="e.g. Senior Backend Engineer"
-                    className="w-full px-4 py-2.5 rounded-xl bg-muted/60 border border-border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/50"
+                    className="w-full px-4 py-2.5 rounded-xl surface-2 border border-border text-primary text-xs font-semibold focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label htmlFor="target-company-name" className="text-xs font-bold text-foreground">Target Company *</label>
+                  <label htmlFor="target-company-name" className="text-xs font-bold text-primary">Target Company *</label>
                   <input
                     id="target-company-name"
                     type="text"
@@ -426,19 +426,19 @@ export default function InterviewConfigPage() {
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     placeholder="e.g. Google, Stripe, Meesho"
-                    className="w-full px-4 py-2.5 rounded-xl bg-muted/60 border border-border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/50"
+                    className="w-full px-4 py-2.5 rounded-xl surface-2 border border-border text-primary text-xs font-semibold focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label htmlFor="experience-level" className="text-xs font-bold text-foreground">Experience Level</label>
+                  <label htmlFor="experience-level" className="text-xs font-bold text-primary">Experience Level</label>
                   <select
                     id="experience-level"
                     value={experience}
                     onChange={(e) => setExperience(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-muted/60 border border-border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500/50"
+                    className="w-full px-4 py-2.5 rounded-xl surface-2 border border-border text-primary text-xs font-bold focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
                   >
                     <option value="Fresher / 0-1 years">Fresher / 0-1 years</option>
                     <option value="2-4 years">2-4 years (Mid Level)</option>
@@ -448,10 +448,10 @@ export default function InterviewConfigPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label htmlFor="required-tech-stack" className="text-xs font-bold text-foreground">
+                  <label htmlFor="required-tech-stack" className="text-xs font-bold text-primary">
                     Required Tech Stack
                     {selectedPreset !== "custom" && (
-                      <span className="ml-2 text-[9px] font-bold text-teal-600 dark:text-teal-400 bg-teal-500/10 px-1.5 py-0.5 rounded-full border border-teal-500/20">
+                      <span className="ml-2 text-[9px] font-bold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/30">
                         Auto-filled
                       </span>
                     )}
@@ -462,16 +462,16 @@ export default function InterviewConfigPage() {
                     value={techStackInput}
                     onChange={(e) => { setTechStackInput(e.target.value); setSelectedPreset("custom"); }}
                     placeholder="Comma separated skills..."
-                    className="w-full px-4 py-2.5 rounded-xl bg-muted/60 border border-border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/50"
+                    className="w-full px-4 py-2.5 rounded-xl surface-2 border border-border text-primary text-xs font-semibold focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="job-description-excerpt" className="text-xs font-bold text-foreground">
+                <label htmlFor="job-description-excerpt" className="text-xs font-bold text-primary">
                   Job Description / Requirements
                   {selectedPreset !== "custom" && (
-                    <span className="ml-2 text-[9px] font-bold text-teal-600 dark:text-teal-400 bg-teal-500/10 px-1.5 py-0.5 rounded-full border border-teal-500/20">
+                    <span className="ml-2 text-[9px] font-bold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/30">
                       Auto-filled
                     </span>
                   )}
@@ -482,41 +482,41 @@ export default function InterviewConfigPage() {
                   value={jobDescription}
                   onChange={(e) => { setJobDescription(e.target.value); setSelectedPreset("custom"); }}
                   placeholder="Paste key responsibilities & role requirements..."
-                  className="w-full px-4 py-2.5 rounded-xl bg-muted/60 border border-border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/50 leading-relaxed resize-none"
+                  className="w-full px-4 py-2.5 rounded-xl surface-2 border border-border text-primary text-xs font-semibold focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 leading-relaxed resize-none"
                 />
               </div>
             </div>
           </div>
 
           {/* ── STEP 2: Resume Section ── */}
-          <div className="p-6 rounded-3xl bg-card border border-border/80 shadow-xs space-y-4">
-            <h2 className="font-display text-base font-bold text-foreground flex items-center gap-2 border-b border-border/60 pb-3">
-              <FileText className="size-4 text-amber-500" /> Step 2 — Your Resume (Used for Interview Calibration)
+          <div className="p-6 sm:p-8 rounded-3xl surface border border-border shadow-xs space-y-4">
+            <h2 className="font-display text-base font-extrabold text-primary flex items-center gap-2 border-b border-border pb-3">
+              <FileText className="size-4 text-orange-500" /> Step 2 — Your Resume (Used for Interview Calibration)
             </h2>
 
             {resumeLoading ? (
-              <div className="flex items-center gap-3 p-4 rounded-2xl bg-muted/40 animate-pulse">
-                <div className="size-10 rounded-xl bg-muted" />
+              <div className="flex items-center gap-3 p-4 rounded-2xl surface-2 animate-pulse">
+                <div className="size-10 rounded-xl bg-border" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-3 w-48 bg-muted rounded" />
-                  <div className="h-3 w-24 bg-muted rounded" />
+                  <div className="h-3 w-48 bg-border rounded" />
+                  <div className="h-3 w-24 bg-border rounded" />
                 </div>
               </div>
             ) : resume ? (
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-teal-500/5 border border-teal-500/20">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-orange-500/5 border border-orange-500/20">
                 <div className="flex items-center gap-3">
-                  <div className="size-10 rounded-2xl bg-teal-500/15 text-teal-600 flex items-center justify-center shrink-0">
+                  <div className="size-10 rounded-2xl bg-orange-500/15 text-orange-400 flex items-center justify-center shrink-0">
                     <FileText className="size-5" />
                   </div>
                   <div>
-                    <p className="text-xs font-extrabold text-foreground">{resume.file_name}</p>
+                    <p className="text-xs font-extrabold text-primary">{resume.file_name}</p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <span className="text-[10px] font-bold text-teal-400 flex items-center gap-1">
                         <CheckCircle2 className="size-3" />
                         {resume.status === "analyzed" ? "Analyzed" : "Uploaded"}
                       </span>
                       {resume.ats_score && (
-                        <span className="text-[10px] font-extrabold text-teal-600 dark:text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded-full border border-teal-500/20">
+                        <span className="text-[10px] font-extrabold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/20">
                           ATS Score: {resume.ats_score} / 100
                         </span>
                       )}
@@ -525,49 +525,49 @@ export default function InterviewConfigPage() {
                 </div>
                 <Link
                   href="/dashboard/resume"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground border border-border px-3 py-1.5 rounded-xl bg-card transition-all shrink-0"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-secondary hover:text-primary border border-border px-3 py-1.5 rounded-xl surface-2 transition-all shrink-0"
                 >
                   <Upload className="size-3.5" /> Upload New Resume
                 </Link>
               </div>
             ) : (
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-orange-500/5 border border-orange-500/20">
                 <div className="flex items-center gap-3">
-                  <div className="size-10 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0">
+                  <div className="size-10 rounded-2xl bg-orange-500/15 text-orange-500 flex items-center justify-center shrink-0">
                     <AlertCircle className="size-5" />
                   </div>
                   <div>
-                    <p className="text-xs font-extrabold text-foreground">No Resume Uploaded</p>
-                    <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Upload your resume so Gemini can tailor questions to your specific experience.</p>
+                    <p className="text-xs font-extrabold text-primary">No Resume Uploaded</p>
+                    <p className="text-[11px] text-muted font-medium mt-0.5">Upload your resume so Gemini can tailor questions to your specific experience.</p>
                   </div>
                 </div>
                 <Link
                   href="/dashboard/resume"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 px-4 py-2 rounded-xl transition-all shadow-md shadow-amber-500/20 shrink-0"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-xl transition-all shadow-md shadow-orange-500/20 shrink-0"
                 >
                   <Upload className="size-3.5" /> Upload Resume
                 </Link>
               </div>
             )}
 
-            <p className="text-[11px] text-muted-foreground font-medium">
+            <p className="text-[11px] text-muted font-medium">
               Your resume is used to personalise questions based on your projects, skills, and experience. It is never shared with third parties.
             </p>
           </div>
 
           {/* ── STEP 3: Round Format & Difficulty ── */}
-          <div className="p-6 rounded-3xl bg-card border border-border/80 shadow-xs space-y-6">
-            <h2 className="font-display text-base font-bold text-foreground flex items-center gap-2 border-b border-border/60 pb-3">
-              <Sparkles className="size-4 text-amber-500" /> Step 3 — Format, Duration & Rigor
+          <div className="p-6 sm:p-8 rounded-3xl surface border border-border shadow-xs space-y-6">
+            <h2 className="font-display text-base font-extrabold text-primary flex items-center gap-2 border-b border-border pb-3">
+              <Sparkles className="size-4 text-orange-500" /> Step 3 — Format, Duration & Rigor
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground">Interview Round Type</label>
+                <label className="text-xs font-bold text-primary">Interview Round Type</label>
                 <select
                   value={interviewType}
                   onChange={(e) => setInterviewType(e.target.value as any)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-muted/60 border border-border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500/50"
+                  className="w-full px-4 py-2.5 rounded-xl surface-2 border border-border text-primary text-xs font-bold focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
                 >
                   <option value="Technical">Technical System Round</option>
                   <option value="HR">Behavioral / HR Culture</option>
@@ -578,15 +578,15 @@ export default function InterviewConfigPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground">Difficulty Level</label>
-                <div className="flex rounded-xl bg-muted/60 p-1 border border-border">
+                <label className="text-xs font-bold text-primary">Difficulty Level</label>
+                <div className="flex rounded-xl surface-2 p-1 border border-border">
                   {(["Easy", "Medium", "Hard"] as const).map((d) => (
                     <button
                       key={d}
                       type="button"
                       onClick={() => setDifficulty(d)}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        difficulty === d ? "bg-teal-600 text-white shadow-xs" : "text-muted-foreground hover:text-foreground"
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
+                        difficulty === d ? "bg-orange-500 text-white shadow-xs" : "text-muted hover:text-primary"
                       }`}
                     >
                       {d}
@@ -596,15 +596,15 @@ export default function InterviewConfigPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground">Session Duration</label>
-                <div className="flex rounded-xl bg-muted/60 p-1 border border-border">
+                <label className="text-xs font-bold text-primary">Session Duration</label>
+                <div className="flex rounded-xl surface-2 p-1 border border-border">
                   {[15, 30, 45].map((m) => (
                     <button
                       key={m}
                       type="button"
                       onClick={() => setDurationMinutes(m)}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        durationMinutes === m ? "bg-teal-600 text-white shadow-xs" : "text-muted-foreground hover:text-foreground"
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
+                        durationMinutes === m ? "bg-orange-500 text-white shadow-xs" : "text-muted hover:text-primary"
                       }`}
                     >
                       {m} min
@@ -616,7 +616,7 @@ export default function InterviewConfigPage() {
 
             {/* Personality Selector */}
             <div className="space-y-3">
-              <label className="text-xs font-bold text-foreground">Interviewer Personality Profile</label>
+              <label className="text-xs font-bold text-primary">Interviewer Personality Profile</label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {PERSONALITIES.map((p) => {
                   const isSelected = personality === p.id;
@@ -626,19 +626,19 @@ export default function InterviewConfigPage() {
                       onClick={() => setPersonality(p.id)}
                       className={`p-3.5 rounded-2xl border cursor-pointer transition-all space-y-1 ${
                         isSelected
-                          ? "bg-teal-500/10 border-teal-500/60 shadow-xs ring-1 ring-teal-500/30"
-                          : "bg-muted/40 border-border hover:border-border/80"
+                          ? "bg-orange-500/10 border-orange-500 shadow-xs ring-1 ring-orange-500/30"
+                          : "surface-2 border-border hover:border-orange-500/40"
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                        <span className="text-xs font-extrabold text-primary flex items-center gap-1.5">
                           <span>{p.icon}</span> {p.name}
                         </span>
-                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-background border border-border text-muted-foreground">
+                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full surface border border-border text-muted">
                           {p.badge}
                         </span>
                       </div>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">{p.desc}</p>
+                      <p className="text-[11px] text-muted leading-relaxed font-medium">{p.desc}</p>
                     </div>
                   );
                 })}
@@ -650,7 +650,7 @@ export default function InterviewConfigPage() {
           <button
             onClick={handleStartInterview}
             disabled={!jobRole.trim() || !companyName.trim()}
-            className="w-full py-4 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full py-4 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-sm shadow-lg shadow-orange-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             <Video className="size-4" /> Generate Interview &amp; Start Simulation <ArrowRight className="size-4" />
           </button>
@@ -658,9 +658,9 @@ export default function InterviewConfigPage() {
 
         {/* ── Right Sidebar ── */}
         <div className="lg:col-span-4 space-y-6">
-          <div className="p-5 rounded-3xl bg-card border border-border/80 shadow-xs space-y-4">
-            <h3 className="font-display text-xs font-extrabold uppercase tracking-wider text-foreground flex items-center gap-2">
-              <Zap className="size-4 text-amber-500" /> How It Works
+          <div className="p-5 rounded-3xl surface border border-border shadow-xs space-y-4">
+            <h3 className="font-display text-xs font-extrabold uppercase tracking-wider text-primary flex items-center gap-2">
+              <Zap className="size-4 text-orange-500" /> How It Works
             </h3>
             <div className="space-y-3 text-xs">
               {[
@@ -670,10 +670,10 @@ export default function InterviewConfigPage() {
                 { n: 4, title: "Get Your Report", desc: "Receive an Executive Recruiter report with ATS score analysis, hiring recommendation, and roadmap." },
               ].map(({ n, title, desc }) => (
                 <div key={n} className="flex items-start gap-3">
-                  <span className="size-6 rounded-full bg-teal-500/10 text-teal-600 font-mono font-bold text-xs flex items-center justify-center shrink-0">{n}</span>
+                  <span className="size-6 rounded-full bg-orange-500/15 text-orange-400 font-mono font-bold text-xs flex items-center justify-center shrink-0 border border-orange-500/30">{n}</span>
                   <div>
-                    <p className="font-bold text-foreground">{title}</p>
-                    <p className="text-muted-foreground leading-relaxed mt-0.5">{desc}</p>
+                    <p className="font-bold text-primary">{title}</p>
+                    <p className="text-muted leading-relaxed mt-0.5">{desc}</p>
                   </div>
                 </div>
               ))}
@@ -681,13 +681,13 @@ export default function InterviewConfigPage() {
           </div>
 
           {/* Interview tips teaser */}
-          <div className="p-5 rounded-3xl bg-card border border-border/80 shadow-xs space-y-3">
-            <h3 className="font-display text-xs font-extrabold uppercase tracking-wider text-foreground flex items-center gap-2">
+          <div className="p-5 rounded-3xl surface border border-border shadow-xs space-y-3">
+            <h3 className="font-display text-xs font-extrabold uppercase tracking-wider text-primary flex items-center gap-2">
               <Brain className="size-4 text-purple-500" /> Quick Interview Tips
             </h3>
             <div className="space-y-2">
               {INTERVIEW_TIPS.slice(0, 4).map((t, i) => (
-                <p key={i} className="text-xs text-muted-foreground leading-relaxed">
+                <p key={i} className="text-xs text-muted leading-relaxed">
                   {t.emoji} {t.tip}
                 </p>
               ))}

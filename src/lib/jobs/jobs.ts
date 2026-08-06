@@ -334,38 +334,31 @@ export async function fetchActiveJobsWithDetails(
   supabase: SupabaseClient,
   userId?: string
 ): Promise<JobWithCompany[]> {
-  await autoExpireJobs(supabase);
+  // Run auto-expire in background without blocking GET response
+  autoExpireJobs(supabase).catch(() => {});
 
-  // Fetch wishlisted and targeted sets if user logged in
   let wishlistedJobIds = new Set<string>();
   let targetedCompanyIds = new Set<string>();
 
   if (userId) {
     try {
-      const { data: wishlists } = await table(supabase, "job_wishlists")
-        .select("job_id")
-        .eq("user_id", userId);
+      const [wishlistsRes, targetsRes] = await Promise.all([
+        table(supabase, "job_wishlists").select("job_id").eq("user_id", userId),
+        table(supabase, "user_company_targets").select("company_id").eq("user_id", userId),
+      ]);
 
-      if (wishlists) {
-        wishlistedJobIds = new Set(wishlists.map((w: any) => w.job_id));
+      if (wishlistsRes.data) {
+        wishlistedJobIds = new Set(wishlistsRes.data.map((w: any) => w.job_id));
+      }
+      if (targetsRes.data) {
+        targetedCompanyIds = new Set(targetsRes.data.map((t: any) => t.company_id));
       }
     } catch {
-      // Ignore
-    }
-
-    try {
-      const { data: targets } = await table(supabase, "user_company_targets")
-        .select("company_id")
-        .eq("user_id", userId);
-
-      if (targets) {
-        targetedCompanyIds = new Set(targets.map((t: any) => t.company_id));
-      }
-    } catch {
-      // Ignore
+      // Ignore DB errors
     }
   }
 
+  // If DB yields jobs, return them directly
   try {
     const { data: rawJobs, error } = await (supabase as any)
       .from("jobs")
@@ -411,24 +404,24 @@ export async function fetchActiveJobsWithDetails(
     console.warn("Notice checking Supabase jobs table:", err);
   }
 
-  // Return 30 real Indian jobs from Lever, Greenhouse & Remotive with sequential tracking IDs 1 to 30
+  // Fetch 100% real aggregated tech jobs from Lever, Greenhouse & Remotive APIs
   try {
     const { getReal30IndianJobs } = await import("./real-jobs-aggregator");
     const realJobs = await getReal30IndianJobs();
     if (realJobs && realJobs.length > 0) {
-      return realJobs.map((j) => ({
-        ...j,
-        is_wishlisted: wishlistedJobIds.has(j.id),
-        is_company_targeted: targetedCompanyIds.has(j.company_id),
-      })).filter((j) => isJobActive(j.last_date));
+      return realJobs
+        .map((j) => ({
+          ...j,
+          is_wishlisted: wishlistedJobIds.has(j.id),
+          is_company_targeted: targetedCompanyIds.has(j.company_id),
+        }))
+        .filter((j) => isJobActive(j.last_date));
     }
   } catch (err) {
-    console.error("Error loading 30 real Indian jobs:", err);
+    console.error("Error loading real aggregated API jobs:", err);
   }
 
-  return FALLBACK_JOBS.map((j) => ({
-    ...j,
-    is_wishlisted: wishlistedJobIds.has(j.id),
-    is_company_targeted: targetedCompanyIds.has(j.company_id),
-  })).filter((j) => isJobActive(j.last_date));
+  return [];
 }
+
+

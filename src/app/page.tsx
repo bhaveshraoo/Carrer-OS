@@ -203,12 +203,12 @@ export default function Home() {
       </section>
 
       {/* ── PROJECTS & INTERNSHIP HUB FEATURE SHOWCASE ── */}
-      <section id="projects" className="mx-auto max-w-6xl px-6 py-20">
+      <section id="projects" className="mx-auto max-w-6xl px-6 py-12">
         <div className="surface border border-orange-500/30 rounded-3xl p-8 sm:p-12 shadow-2xl relative overflow-hidden bg-gradient-to-br from-orange-500/10 via-surface to-surface">
           <div className="grid md:grid-cols-2 gap-8 items-center relative z-10">
             <div className="space-y-4">
               <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold text-orange-400 bg-orange-500/15 border border-orange-500/30">
-                <Rocket className="size-3.5 text-orange-500" /> New Feature: Projects & Internship Hub
+                <Rocket className="size-3.5 text-orange-500" /> SaaS Project Cohorts
               </div>
 
               <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-primary leading-tight">
@@ -275,6 +275,127 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── TECH JOBS SWIPE DECK FEATURE SHOWCASE ── */}
+      <section className="mx-auto max-w-6xl px-6 py-12">
+        <div className="surface border border-teal-500/30 rounded-3xl p-8 sm:p-12 shadow-2xl relative overflow-hidden bg-gradient-to-br from-teal-500/10 via-surface to-surface">
+          <div className="grid md:grid-cols-2 gap-8 items-center relative z-10">
+
+            {/* Left Visual Interactive Card Mockup */}
+            <div className="surface-2 p-6 rounded-3xl border border-teal-500/30 space-y-4 shadow-xl order-2 md:order-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-orange-400 bg-orange-500/10 px-3 py-1 rounded-full border border-orange-500/20">
+                  🔥 CareerSwipe Deck
+                </span>
+                <span className="text-xs font-extrabold text-teal-400 font-mono">92% Match Score</span>
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="font-display text-xl font-bold text-primary">Senior Full-Stack Engineer</h3>
+                <p className="text-xs text-muted">Google India · Remote / Bengaluru · ₹28 - ₹42 LPA</p>
+              </div>
+
+              <div className="surface p-4 rounded-2xl border border-border space-y-2 text-xs">
+                <div className="flex justify-between font-bold text-primary">
+                  <span>Match Breakdown</span>
+                  <span className="text-teal-400">ATS Resume Verified</span>
+                </div>
+                <p className="text-[11px] text-secondary">
+                  Skills matched: Next.js, Node.js, System Design, PostgreSQL. 2 Missing skills highlighted with 1-click learning roadmap.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <div className="flex-1 py-2.5 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 text-xs font-bold text-center">
+                  ✕ Pass
+                </div>
+                <div className="flex-1 py-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs font-bold text-center">
+                  ♥ Apply Now
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4 order-1 md:order-2">
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold text-teal-400 bg-teal-500/15 border border-teal-500/30">
+                <Building2 className="size-3.5 text-teal-500" /> New Feature: Real-World Tech Jobs Deck
+              </div>
+
+              <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-primary leading-tight">
+                Swipe Through <span className="text-teal-400">30+ Real Tech Roles</span> with Live Match Scores.
+              </h2>
+
+              <p className="text-sm text-secondary leading-relaxed">
+                Explore tech roles from top companies using our interactive job deck. Instantly see your ATS Resume Match Score, salary benchmarks, and skill gap insights before applying.
+              </p>
+
+              <div className="pt-2">
+                <Button asChild size="lg" variant="primary">
+                  <Link href="/dashboard/jobs">
+                    Explore Job Swipe Deck <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* ── AI MOCK INTERVIEW ENGINE FEATURE SHOWCASE ── */}
+      <section className="mx-auto max-w-6xl px-6 py-12">
+        <div className="surface border border-purple-500/30 rounded-3xl p-8 sm:p-12 shadow-2xl relative overflow-hidden bg-gradient-to-br from-purple-500/10 via-surface to-surface">
+          <div className="grid md:grid-cols-2 gap-8 items-center relative z-10">
+
+            <div className="space-y-4">
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold text-purple-400 bg-purple-500/15 border border-purple-500/30">
+                <Sparkles className="size-3.5 text-purple-400" /> New Feature: AI Mock Interview Simulator
+              </div>
+
+              <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-primary leading-tight">
+                Practice Voice Interviews with <span className="text-purple-400">FAANG Bar-Raiser AI.</span>
+              </h2>
+
+              <p className="text-sm text-secondary leading-relaxed">
+                Voice-first realtime mock interviews calibrated by Gemini. Choose from 5 interviewer personalities (Strict FAANG Lead, HR Recruiter, Startup Founder) and receive an executive report card with strict grading.
+              </p>
+
+              <div className="pt-2">
+                <Button asChild size="lg" variant="primary">
+                  <Link href="/dashboard/interview">
+                    Start Voice AI Interview <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+
+            {/* Visual Right Preview Card */}
+            <div className="surface-2 p-6 rounded-3xl border border-purple-500/30 space-y-4 shadow-xl">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20">
+                  🎙️ Voice Realtime Active
+                </span>
+                <span className="text-xs font-bold text-emerald-400 font-mono">100% Privacy</span>
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="font-display text-xl font-bold text-primary">Senior FAANG Engineering Manager</h3>
+                <p className="text-xs text-muted">Target Company: Google · Technical System Architecture</p>
+              </div>
+
+              <div className="surface p-4 rounded-2xl border border-border space-y-2 text-xs">
+                <div className="flex justify-between font-bold text-primary">
+                  <span>Recruiter Report Card</span>
+                  <span className="text-orange-400 font-mono">Strict Bar-Raiser Score</span>
+                </div>
+                <p className="text-[11px] text-secondary">
+                  Scores clarity, technical depth, and Big-O complexities. Generates personalized learning roadmap steps.
+                </p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
       {/* ── Pillars / What you get ── */}
       <section id="pillars" className="mx-auto max-w-6xl px-6 py-20">
         <div className="text-center mb-14">
@@ -286,7 +407,30 @@ export default function Home() {
           </h2>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
-          {pillars.map((p) => (
+          {[
+            ...pillars,
+            {
+              icon: Building2,
+              title: "Tech Jobs CareerSwipe Deck",
+              body: "Swipe through 30+ verified tech roles with instant ATS skill match % and gap analysis.",
+              accent: "var(--teal)",
+              accentDim: "var(--teal-dim)",
+            },
+            {
+              icon: Sparkles,
+              title: "AI Voice Mock Interview",
+              body: "Realtime voice interview simulator with 5 interviewer personalities and strict bar-raiser report cards.",
+              accent: "#a855f7",
+              accentDim: "rgba(168, 85, 247, 0.15)",
+            },
+            {
+              icon: Rocket,
+              title: "SaaS Project Internships",
+              body: "Build production software in teams. Earn verified certificates, LORs, offer letters, and 5% revenue share.",
+              accent: "var(--orange)",
+              accentDim: "var(--orange-glow)",
+            },
+          ].map((p) => (
             <div
               key={p.title}
               className="rounded-3xl p-7 group hover:-translate-y-1 hover:shadow-xl transition-all duration-300 surface border border-border"

@@ -108,15 +108,21 @@ export function TopHiringDrivesCarousel({ onSelectDrive }: { onSelectDrive?: (dr
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 dark:via-teal-400/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none z-20" />
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="size-10 rounded-2xl bg-white dark:bg-slate-900 border border-border p-1 flex items-center justify-center shrink-0 shadow-xs">
+                <div className="size-10 rounded-2xl bg-white dark:bg-slate-900 border border-border p-1 flex items-center justify-center shrink-0 shadow-xs relative overflow-hidden">
                   <img
                     src={drive.logo}
                     alt={drive.company}
                     className="w-full h-full object-contain"
                     onError={(e) => {
-                      (e.target as HTMLElement).style.display = "none";
+                      const target = e.target as HTMLElement;
+                      target.style.display = "none";
+                      const fallback = target.nextElementSibling as HTMLElement;
+                      if (fallback) fallback.classList.remove("hidden");
                     }}
                   />
+                  <div className="hidden size-full rounded-xl bg-gradient-to-br from-teal-500 to-amber-500 text-white font-extrabold text-xs flex items-center justify-center">
+                    {drive.company.charAt(0).toUpperCase()}
+                  </div>
                 </div>
                 <div>
                   <h4 className="font-bold text-xs text-foreground">{drive.company}</h4>

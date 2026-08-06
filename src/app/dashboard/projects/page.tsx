@@ -94,7 +94,10 @@ export default function ProjectsMarketplacePage() {
       p.techStack.some((t) => t.toLowerCase().includes(search.toLowerCase()));
 
     const matchesCategory =
-      selectedCategory === "All" || p.category === selectedCategory || (selectedCategory === "AI Track" && p.category === "AI");
+      selectedCategory === "All" ||
+      p.category === selectedCategory ||
+      (selectedCategory === "AI Track" && (p.category === "AI Track" || p.category === "AI")) ||
+      (selectedCategory === "ML Systems" && (p.category === "ML Systems" || p.category === "ML"));
 
     return matchesSearch && matchesCategory;
   }).sort((a, b) => {

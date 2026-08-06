@@ -235,7 +235,7 @@ export function DashboardOverview({
           </h2>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
 
           {/* Module 0: Roadmaps */}
           <div className="surface rounded-3xl p-6 border border-orange-500/30 hover:border-orange-500/50 transition-all space-y-4 flex flex-col justify-between group shadow-md hover:-translate-y-1 bg-orange-500/5">
@@ -329,15 +329,76 @@ export function DashboardOverview({
             </Link>
           </div>
 
-          {/* Module 4: Projects & Internship Hub */}
+          {/* Module 4: Tech Jobs Swipe Deck */}
+          <div className="surface rounded-3xl p-6 border border-teal-500/30 hover:border-teal-500/50 transition-all space-y-4 flex flex-col justify-between group shadow-md hover:-translate-y-1 bg-teal-500/5">
+            <div className="space-y-3">
+              <div className="size-12 rounded-2xl bg-teal-500/15 text-teal-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Building2 className="size-6 text-teal-400" />
+              </div>
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-teal-400 bg-teal-500/15 px-2 py-0.5 rounded-full border border-teal-500/30">
+                  🔥 CareerSwipe Deck
+                </span>
+                <h3 className="font-display text-lg font-bold text-primary group-hover:text-teal-400 transition-colors pt-1">
+                  Tech Jobs Hub
+                </h3>
+              </div>
+              <p className="text-xs text-secondary leading-relaxed">
+                Swipe 30+ verified tech roles, get live ATS Resume Match %, and 1-click skill gap roadmaps.
+              </p>
+            </div>
+
+            <Link
+              href="/dashboard/jobs"
+              className="px-4 py-2 rounded-2xl text-xs font-bold bg-teal-500 text-white hover:brightness-110 transition-all flex items-center justify-between shadow-md shadow-teal-500/20"
+            >
+              <span>Explore Tech Jobs</span>
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
+
+          {/* Module 5: AI Mock Interview Engine */}
+          <div className="surface rounded-3xl p-6 border border-purple-500/30 hover:border-purple-500/50 transition-all space-y-4 flex flex-col justify-between group shadow-md hover:-translate-y-1 bg-purple-500/5">
+            <div className="space-y-3">
+              <div className="size-12 rounded-2xl bg-purple-500/15 text-purple-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Sparkles className="size-6 text-purple-400" />
+              </div>
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-purple-400 bg-purple-500/15 px-2 py-0.5 rounded-full border border-purple-500/30">
+                  🎙️ Voice AI Simulator
+                </span>
+                <h3 className="font-display text-lg font-bold text-primary group-hover:text-purple-400 transition-colors pt-1">
+                  AI Mock Interview
+                </h3>
+              </div>
+              <p className="text-xs text-secondary leading-relaxed">
+                FAANG bar-raiser AI interviewer, 5 personalities, strict grading, and recruiter report card.
+              </p>
+            </div>
+
+            <Link
+              href="/dashboard/interview"
+              className="px-4 py-2 rounded-2xl text-xs font-bold bg-purple-600 text-white hover:brightness-110 transition-all flex items-center justify-between shadow-md shadow-purple-500/20"
+            >
+              <span>Start Voice Interview</span>
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
+
+          {/* Module 6: Projects & Internship Hub */}
           <div className="surface rounded-3xl p-6 border border-orange-500/30 hover:border-orange-500/50 transition-all space-y-4 flex flex-col justify-between group shadow-md hover:-translate-y-1 bg-orange-500/5">
             <div className="space-y-3">
               <div className="size-12 rounded-2xl bg-orange-500/15 text-orange-500 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <Rocket className="size-6 text-orange-500" />
               </div>
-              <h3 className="font-display text-lg font-bold text-primary group-hover:text-orange-400 transition-colors">
-                Projects & Internship Hub
-              </h3>
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-orange-400 bg-orange-500/15 px-2 py-0.5 rounded-full border border-orange-500/30">
+                  🏆 Verified Certs & 5% Rev Share
+                </span>
+                <h3 className="font-display text-lg font-bold text-primary group-hover:text-orange-400 transition-colors pt-1">
+                  Projects & Internships
+                </h3>
+              </div>
               <p className="text-xs text-secondary leading-relaxed">
                 1-6 Month SaaS internships, guaranteed certificates, LORs, 5% revenue sharing, and offer letters.
               </p>
