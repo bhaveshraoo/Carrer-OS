@@ -31,10 +31,11 @@
 *.tsbuildinfo
 next-env.d.ts
 
-# gemini
+# gemini & AI local scratch
 .gemini/
+scratch/
 
-# ignored documentation & internal data folders
+# ignored documentation & internal company data
 README.md
 readme.md
 AGENTS.md
@@ -45,5 +46,18 @@ company/
 Company/
 docs/
 Docs/
+research/
+Research/
+internal/
+Internal/
 dsa question bank/
 dsa-question-bank/
+*.docx
+*.pdf
+*.xlsx
+*.csv
+*.pptx
+*.zip
+*.tar.gz
+*.json.bak
+*.dump
