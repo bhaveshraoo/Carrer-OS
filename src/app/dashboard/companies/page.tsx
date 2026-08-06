@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { table } from "@/lib/supabase/typed-table";
 import { CompanyList, CompanyData } from "@/components/companies/company-list";
+import { SEED_COMPANIES } from "@/lib/companies/seed-data";
 import { CheckCircle2, ShieldCheck, Sparkles, Target } from "lucide-react";
 import { redirect } from "next/navigation";
 
@@ -39,7 +40,7 @@ export default async function CompaniesPage() {
     topicsMap[t.company_id].push(t.topic);
   });
 
-  const companies: CompanyData[] = (rawCompanies ?? [])
+  let companies: CompanyData[] = (rawCompanies ?? [])
     .sort((a, b) => a.name.localeCompare(b.name))
     .map((c) => {
       const intel = intelMap[c.id];
@@ -56,29 +57,44 @@ export default async function CompaniesPage() {
       };
     });
 
+  // Fallback to seed data if database is empty so page NEVER renders blank
+  if (companies.length === 0) {
+    companies = SEED_COMPANIES.map((sc) => ({
+      id: sc.id,
+      name: sc.name,
+      slug: sc.slug,
+      logo_url: sc.logo_url,
+      career_page_url: sc.career_page_url,
+      metadata: sc.metadata,
+      hiring_rounds_count: sc.hiring_rounds_count,
+      required_skills: sc.required_skills,
+      top_topics: sc.top_topics,
+    }));
+  }
+
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-fade-up">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
         <div>
-          <p className="text-xs font-semibold tracking-widest uppercase mb-1" style={{ color: "var(--orange)" }}>
+          <p className="text-xs font-semibold tracking-widest uppercase mb-1 text-teal-600 dark:text-teal-400">
             Company Intelligence &amp; Roadmaps
           </p>
-          <h1 className="font-display text-3xl font-extrabold text-primary flex items-center gap-2.5">
-            <Target className="size-8 text-orange-500" /> Target Companies &amp; Intelligence
+          <h1 className="font-display text-3xl font-extrabold text-foreground flex items-center gap-2.5">
+            <Target className="size-8 text-teal-500" /> Target Companies &amp; Intelligence
           </h1>
-          <p className="mt-1 text-sm text-secondary">
-            Decode hiring rounds, technical competencies, DSA topic weights, and AI readiness scores across 70+ top tech firms.
+          <p className="mt-1 text-sm text-muted-foreground">
+            Decode hiring rounds, technical competencies, DSA topic weights, and AI readiness scores across top tech firms.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="surface border border-border px-4 py-2.5 rounded-2xl text-center">
-            <p className="text-[10px] font-bold uppercase text-muted tracking-wide">Total Companies</p>
-            <p className="text-lg font-extrabold text-primary font-mono">{companies.length}</p>
+          <div className="bg-card border border-border px-4 py-2.5 rounded-2xl text-center shadow-xs">
+            <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wide">Total Companies</p>
+            <p className="text-lg font-extrabold text-foreground font-mono">{companies.length}</p>
           </div>
-          <div className="surface border border-orange-500/30 bg-orange-500/5 px-4 py-2.5 rounded-2xl text-center">
-            <p className="text-[10px] font-bold uppercase text-orange-400 tracking-wide">Targeted</p>
-            <p className="text-lg font-extrabold text-orange-400 font-mono">{Object.keys(targetedSet).length}</p>
+          <div className="bg-teal-500/10 border border-teal-500/30 px-4 py-2.5 rounded-2xl text-center shadow-xs">
+            <p className="text-[10px] font-bold uppercase text-teal-600 dark:text-teal-400 tracking-wide">Targeted</p>
+            <p className="text-lg font-extrabold text-teal-600 dark:text-teal-400 font-mono">{Object.keys(targetedSet).length}</p>
           </div>
         </div>
       </div>
@@ -87,10 +103,10 @@ export default async function CompaniesPage() {
       <CompanyList companies={companies} targetedSet={targetedSet} />
 
       {/* Legend */}
-      <div className="surface p-4 rounded-2xl border border-border flex items-center gap-3 text-xs text-muted">
-        <ShieldCheck className="size-5 shrink-0 text-teal-400" />
+      <div className="p-4 rounded-2xl bg-card border border-border/80 flex items-center gap-3 text-xs text-muted-foreground shadow-xs">
+        <ShieldCheck className="size-5 shrink-0 text-teal-500" />
         <span>
-          <strong className="text-primary">Verified Company Intel</strong> — Sourced and benchmarked against authentic placement records, TCS NQT, InfyTQ, and product engineering interview experiences.
+          <strong className="text-foreground">Verified Company Intel</strong> — Benchmarked against authentic placement records, campus hiring patterns, and product engineering interview experiences.
         </span>
       </div>
     </div>

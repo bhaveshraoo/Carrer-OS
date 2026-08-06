@@ -251,6 +251,254 @@ export interface Database {
           created_at?: string;
         };
       };
+      roadmaps: {
+        Row: {
+          id: string;
+          user_id: string;
+          track_id: string;
+          title: string;
+          is_custom: boolean;
+          start_date: string;
+          target_end_date: string;
+          daily_hours: number;
+          status: "active" | "completed" | "abandoned";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          track_id: string;
+          title: string;
+          is_custom?: boolean;
+          start_date: string;
+          target_end_date: string;
+          daily_hours: number;
+          status?: "active" | "completed" | "abandoned";
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          track_id?: string;
+          title?: string;
+          is_custom?: boolean;
+          start_date?: string;
+          target_end_date?: string;
+          daily_hours?: number;
+          status?: "active" | "completed" | "abandoned";
+          created_at?: string;
+        };
+      };
+      roadmap_tasks: {
+        Row: {
+          id: string;
+          roadmap_id: string;
+          user_id: string;
+          scheduled_date: string;
+          scheduled_time: string | null;
+          topic_id: string;
+          topic_title: string;
+          topic_category: string;
+          notes: string | null;
+          resources: any;
+          estimated_minutes: number;
+          task_type: "study" | "manual-event";
+          event_subtype: "test" | "class" | "interview" | "deadline" | "note" | null;
+          completed: boolean;
+          completed_at: string | null;
+          is_backlog: boolean;
+          order_index: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          roadmap_id: string;
+          user_id: string;
+          scheduled_date: string;
+          scheduled_time?: string | null;
+          topic_id: string;
+          topic_title: string;
+          topic_category: string;
+          notes?: string | null;
+          resources?: any;
+          estimated_minutes?: number;
+          task_type?: "study" | "manual-event";
+          event_subtype?: "test" | "class" | "interview" | "deadline" | "note" | null;
+          completed?: boolean;
+          completed_at?: string | null;
+          is_backlog?: boolean;
+          order_index?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          roadmap_id?: string;
+          user_id?: string;
+          scheduled_date?: string;
+          scheduled_time?: string | null;
+          topic_id?: string;
+          topic_title?: string;
+          topic_category?: string;
+          notes?: string | null;
+          resources?: any;
+          estimated_minutes?: number;
+          task_type?: "study" | "manual-event";
+          event_subtype?: "test" | "class" | "interview" | "deadline" | "note" | null;
+          completed?: boolean;
+          completed_at?: string | null;
+          is_backlog?: boolean;
+          order_index?: number;
+          created_at?: string;
+        };
+      };
+      user_streaks: {
+        Row: {
+          id: string;
+          user_id: string;
+          current_streak: number;
+          longest_streak: number;
+          last_active_date: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          current_streak?: number;
+          longest_streak?: number;
+          last_active_date?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          current_streak?: number;
+          longest_streak?: number;
+          last_active_date?: string | null;
+          updated_at?: string;
+        };
+      };
+      roadmap_certificates: {
+        Row: {
+          id: string;
+          roadmap_id: string;
+          user_id: string;
+          user_name: string;
+          track_title: string;
+          duration_label: string;
+          issued_date: string;
+          certificate_slug: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          roadmap_id: string;
+          user_id: string;
+          user_name: string;
+          track_title: string;
+          duration_label: string;
+          issued_date: string;
+          certificate_slug: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          roadmap_id?: string;
+          user_id?: string;
+          user_name?: string;
+          track_title?: string;
+          duration_label?: string;
+          issued_date?: string;
+          certificate_slug?: string;
+          created_at?: string;
+        };
+      };
+      jobs: {
+        Row: {
+          id: string;
+          company_id: string;
+          role: string;
+          description: string;
+          domain: string;
+          location: string;
+          ctc_range: string;
+          tech_stack: string[];
+          interview_types: string[];
+          application_url: string;
+          last_date: string;
+          status: "active" | "expired";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          role: string;
+          description: string;
+          domain?: string;
+          location?: string;
+          ctc_range?: string;
+          tech_stack?: string[];
+          interview_types?: string[];
+          application_url: string;
+          last_date: string;
+          status?: "active" | "expired";
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          role?: string;
+          description?: string;
+          domain?: string;
+          location?: string;
+          ctc_range?: string;
+          tech_stack?: string[];
+          interview_types?: string[];
+          application_url?: string;
+          last_date?: string;
+          status?: "active" | "expired";
+          created_at?: string;
+        };
+      };
+      job_wishlists: {
+        Row: {
+          user_id: string;
+          job_id: string;
+          swiped_at: string;
+        };
+        Insert: {
+          user_id: string;
+          job_id: string;
+          swiped_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          job_id?: string;
+          swiped_at?: string;
+        };
+      };
+      job_swipes_log: {
+        Row: {
+          id: string;
+          user_id: string;
+          job_id: string;
+          direction: "left" | "right";
+          swiped_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          job_id: string;
+          direction: "left" | "right";
+          swiped_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          job_id?: string;
+          direction?: "left" | "right";
+          swiped_at?: string;
+        };
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

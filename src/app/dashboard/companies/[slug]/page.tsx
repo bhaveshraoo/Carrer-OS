@@ -72,6 +72,8 @@ function sanitize(text: string): string {
     .trim();
 }
 
+import { getSeedCompanyBySlug } from "@/lib/companies/seed-data";
+
 export default async function CompanyDetailPage({
   params,
 }: {
@@ -84,19 +86,44 @@ export default async function CompanyDetailPage({
   if (!user) redirect("/login");
 
   const { data: allCompanies } = await table(supabase, "companies").select("*").eq("slug", slug);
-  const company = allCompanies?.[0];
-  if (!company) notFound();
+  let company = allCompanies?.[0];
+  let intel: any = null;
+  let dsaTopics: any[] = [];
 
-  const { data: intelRows } = await table(supabase, "company_intel")
-    .select("*").eq("company_id", company.id);
-  const intel = intelRows?.[0];
+  const seed = getSeedCompanyBySlug(slug);
+
+  if (company) {
+    const { data: intelRows } = await table(supabase, "company_intel")
+      .select("*").eq("company_id", company.id);
+    intel = intelRows?.[0];
+
+    const { data: dt } = await table(supabase, "company_dsa_topics")
+      .select("*").eq("company_id", company.id);
+    dsaTopics = dt || [];
+  } else if (seed) {
+    company = {
+      id: seed.id,
+      name: seed.name,
+      slug: seed.slug,
+      logo_url: seed.logo_url ?? null,
+      career_page_url: seed.career_page_url ?? null,
+      metadata: seed.metadata,
+      created_at: new Date().toISOString(),
+    };
+    intel = {
+      overview: seed.overview,
+      hiring_process: seed.hiring_process,
+      required_skills: seed.required_skills,
+      prep_roadmap: seed.metadata.interview_guidance,
+    };
+    dsaTopics = seed.top_topics.map((t, idx) => ({ topic: t, emphasis: 9 - idx }));
+  }
+
+  if (!company) notFound();
 
   const { data: targets } = await table(supabase, "user_company_targets")
     .select("*").eq("user_id", user.id).eq("company_id", company.id);
   const isTargeted = (targets?.length ?? 0) > 0;
-
-  const { data: dsaTopics } = await table(supabase, "company_dsa_topics")
-    .select("*").eq("company_id", company.id);
 
   const metadata = (company.metadata ?? {}) as {
     tier?: string;
@@ -133,7 +160,7 @@ export default async function CompanyDetailPage({
   const consItems: { key: string; val: string }[] = [];
   const otherItems: { key: string; val: string }[] = [];
 
-  rawOverview.split("\n").forEach((line) => {
+  rawOverview.split("\n").forEach((line: string) => {
     const l = line.trim();
     if (!l || l.length < 4) return;
 
@@ -313,15 +340,15 @@ export default async function CompanyDetailPage({
     rawRoadmap.length > 50 && !rawRoadmap.startsWith("Prioritize high-weight DSA topics ()");
 
   const sprintDays = hasRealRoadmap
-    ? Array.from(rawRoadmap.matchAll(/(Days?\s*\d+[\d\s–\-–]*[^\n]*):\s*([^\n]+)/gi)).map((m) => ({
-        days: sanitize(m[1]),
-        task: sanitize(m[2]),
+    ? Array.from(rawRoadmap.matchAll(/(Days?\s*\d+[\d\s\u2013\-\u2013]*[^\n]*):\s*([^\n]+)/gi)).map((m: any) => ({
+        days: sanitize(m[1] as string),
+        task: sanitize(m[2] as string),
       }))
     : [];
 
   const guidanceSource = rawRoadmap.includes("DO ") ? rawRoadmap : (metadata.interview_guidance || "");
-  const dosList = Array.from(guidanceSource.matchAll(/\bDO\s+([^\n]+)/g)).map((m) => sanitize(m[1]));
-  const dontsList = Array.from(guidanceSource.matchAll(/\bDON'T\s+([^\n]+)/g)).map((m) => sanitize(m[1]));
+  const dosList = Array.from(guidanceSource.matchAll(/\bDO\s+([^\n]+)/g)).map((m: any) => sanitize(m[1] as string));
+  const dontsList = Array.from(guidanceSource.matchAll(/\bDON'T\s+([^\n]+)/g)).map((m: any) => sanitize(m[1] as string));
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-fade-up pb-12">
@@ -535,7 +562,7 @@ export default async function CompanyDetailPage({
           </CardHeader>
           <CardContent>
             <div className="relative pl-6 space-y-6 border-l border-border">
-              {intel.hiring_process.map((stage, i) => {
+              {intel.hiring_process.map((stage: { stage: string; description: string }, i: number) => {
                 const stageTitle = sanitize(stage.stage).replace(/^(Round|Stage)\s*\d+:\s*(Round|Stage)\s*\d+:/i, "$1 $2:");
                 return (
                   <div key={i} className="relative group">
@@ -692,7 +719,7 @@ export default async function CompanyDetailPage({
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {intel.required_skills.map((skill, i) => (
+              {intel.required_skills.map((skill: string, i: number) => (
                 <span
                   key={i}
                   className="text-xs px-3 py-1.5 rounded-2xl font-bold surface-2 border border-border text-secondary flex items-center gap-1.5"
@@ -837,7 +864,7 @@ export default async function CompanyDetailPage({
             Verified Reference Sources
           </p>
           <div className="flex flex-wrap gap-3">
-            {intel.source_urls.map((url, i) => (
+            {intel.source_urls.map((url: string, i: number) => (
               <a
                 key={i}
                 href={url}

@@ -20,8 +20,10 @@ import {
   Rocket,
   DollarSign,
   Trophy,
+  Compass,
 } from "lucide-react";
 import { ScoreRing } from "@/components/score-ring";
+import { CANONICAL_SCORES } from "@/lib/metrics/canonical-scores";
 
 interface DashboardOverviewProps {
   displayName: string;
@@ -51,8 +53,8 @@ export function DashboardOverview({
     else setGreetingTime("Good Evening");
   }, []);
 
-  const resumeScore = latestResumeScore ?? 88;
-  const targetCount = targetCompanies.length;
+  const resumeScore = latestResumeScore ?? CANONICAL_SCORES.resume_ats_score;
+  const targetCount = targetCompanies.length > 0 ? targetCompanies.length : CANONICAL_SCORES.verified_company_target_count;
   const firstName = displayName.split(" ")[0];
 
   return (
@@ -234,6 +236,29 @@ export function DashboardOverview({
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+
+          {/* Module 0: Roadmaps */}
+          <div className="surface rounded-3xl p-6 border border-orange-500/30 hover:border-orange-500/50 transition-all space-y-4 flex flex-col justify-between group shadow-md hover:-translate-y-1 bg-orange-500/5">
+            <div className="space-y-3">
+              <div className="size-12 rounded-2xl bg-orange-500/15 text-orange-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Compass className="size-6" />
+              </div>
+              <h3 className="font-display text-lg font-bold text-primary group-hover:text-orange-400 transition-colors">
+                Personalized Roadmaps
+              </h3>
+              <p className="text-xs text-secondary leading-relaxed">
+                Structured skill trees, daily study pacing, Gemini custom tracks, backlog extensions, and certificates.
+              </p>
+            </div>
+
+            <Link
+              href="/dashboard/roadmaps"
+              className="px-4 py-2 rounded-2xl text-xs font-bold bg-orange-500 text-white hover:brightness-110 transition-all flex items-center justify-between shadow-md shadow-orange-500/20"
+            >
+              <span>View Roadmaps</span>
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
 
           {/* Module 1: Resume */}
           <div className="surface rounded-3xl p-6 border border-border hover:border-orange-500/50 transition-all space-y-4 flex flex-col justify-between group shadow-md hover:-translate-y-1">

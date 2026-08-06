@@ -19,6 +19,9 @@ import {
   User,
   LogOut,
   Rocket,
+  Compass,
+  Briefcase,
+  Video,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationBell } from "@/components/notifications/notification-bell";
@@ -26,7 +29,10 @@ import { BrandLogo } from "@/components/brand-logo";
 
 const navLinks = [
   { href: "/dashboard",          label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/dashboard/jobs",     label: "Job Portal",icon: Briefcase },
+  { href: "/dashboard/roadmaps", label: "Roadmaps",  icon: Compass },
   { href: "/dashboard/resume",   label: "Resume",    icon: FileText },
+  { href: "/dashboard/interview",label: "AI Interview", icon: Video },
   { href: "/dashboard/companies",label: "Companies", icon: Building2 },
   { href: "/dashboard/prep",     label: "DSA Prep",  icon: Code2 },
   { href: "/dashboard/projects", label: "Projects & Internships", icon: Rocket },
@@ -67,12 +73,12 @@ export function DashboardNav({
           borderBottom: "1px solid var(--border)",
         }}
       >
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 h-16 flex items-center justify-between">
+        <div className="mx-auto max-w-[1550px] px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           {/* Logo + Nav links */}
-          <div className="flex items-center gap-6">
-            <BrandLogo href="/dashboard" size="md" className="-ml-1" />
+          <div className="flex items-center gap-4 lg:gap-6">
+            <BrandLogo href="/dashboard" size="md" className="-ml-1 shrink-0" />
 
-            <nav className="hidden md:flex items-center gap-1">
+            <nav className="hidden md:flex items-center gap-1 overflow-x-auto no-scrollbar">
               {navLinks.map((link) => {
                 const isActive = link.exact
                   ? pathname === link.href
@@ -81,7 +87,7 @@ export function DashboardNav({
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-all duration-200 ${
+                    className={`flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 rounded-xl text-xs lg:text-sm font-medium whitespace-nowrap transition-all duration-200 ${
                       isActive ? "font-semibold" : "hover:opacity-80"
                     }`}
                     style={
@@ -98,7 +104,7 @@ export function DashboardNav({
                           }
                     }
                   >
-                    <link.icon className="size-4" />
+                    <link.icon className="size-4 shrink-0" />
                     {link.label}
                   </Link>
                 );
