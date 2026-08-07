@@ -29,7 +29,8 @@ export interface JobWithCompany {
 export function isJobActive(lastDateStr: string): boolean {
   if (!lastDateStr) return true;
   const lastTime = new Date(lastDateStr).getTime();
-  return lastTime >= Date.now();
+  // Active if deadline is valid or set in the future / recent
+  return isNaN(lastTime) || lastTime >= Date.now() - 24 * 60 * 60 * 1000;
 }
 
 export const FALLBACK_JOBS: JobWithCompany[] = [
@@ -358,7 +359,24 @@ export async function fetchActiveJobsWithDetails(
     }
   }
 
-  // If DB yields jobs, return them directly
+  // 1. Primary: Fetch 100% real live aggregated jobs from Lever, Greenhouse & Remotive APIs
+  try {
+    const { getReal30IndianJobs } = await import("./real-jobs-aggregator");
+    const realJobs = await getReal30IndianJobs();
+    if (realJobs && realJobs.length > 0) {
+      return realJobs
+        .map((j) => ({
+          ...j,
+          is_wishlisted: wishlistedJobIds.has(j.id),
+          is_company_targeted: targetedCompanyIds.has(j.company_id),
+        }))
+        .filter((j) => isJobActive(j.last_date));
+    }
+  } catch (err) {
+    console.error("Error loading real aggregated API jobs:", err);
+  }
+
+  // 2. Secondary: Fallback to Supabase DB table
   try {
     const { data: rawJobs, error } = await (supabase as any)
       .from("jobs")
@@ -404,24 +422,11 @@ export async function fetchActiveJobsWithDetails(
     console.warn("Notice checking Supabase jobs table:", err);
   }
 
-  // Fetch 100% real aggregated tech jobs from Lever, Greenhouse & Remotive APIs
-  try {
-    const { getReal30IndianJobs } = await import("./real-jobs-aggregator");
-    const realJobs = await getReal30IndianJobs();
-    if (realJobs && realJobs.length > 0) {
-      return realJobs
-        .map((j) => ({
-          ...j,
-          is_wishlisted: wishlistedJobIds.has(j.id),
-          is_company_targeted: targetedCompanyIds.has(j.company_id),
-        }))
-        .filter((j) => isJobActive(j.last_date));
-    }
-  } catch (err) {
-    console.error("Error loading real aggregated API jobs:", err);
-  }
-
-  return [];
+  return FALLBACK_JOBS.map((j) => ({
+    ...j,
+    is_wishlisted: wishlistedJobIds.has(j.id),
+    is_company_targeted: targetedCompanyIds.has(j.company_id),
+  }));
 }
 
 

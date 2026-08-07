@@ -26,9 +26,9 @@ export async function GET(request: Request) {
     // 1. Fetch 30 real Indian jobs (10 Lever + 10 Greenhouse + 10 Remotive)
     const realJobs = await getReal30IndianJobs();
 
-    // 2. Auto-expire old jobs past last_date
+    // 2. Wipe out expired jobs past last_date from Supabase DB
     const nowStr = new Date().toISOString();
-    await supabase.from("jobs").update({ status: "expired" }).lt("last_date", nowStr);
+    await supabase.from("jobs").delete().lt("last_date", nowStr);
 
     let syncedCount = 0;
 

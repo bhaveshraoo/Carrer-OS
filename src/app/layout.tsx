@@ -21,6 +21,9 @@ export const metadata: Metadata = {
   },
 };
 
+import { Suspense } from "react";
+import { NavigationLoader } from "@/components/navigation-loader";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -40,6 +43,9 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col font-sans" style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}>
+        <Suspense fallback={null}>
+          <NavigationLoader />
+        </Suspense>
         <NotificationProvider>
           <ThemeProvider>
             {children}

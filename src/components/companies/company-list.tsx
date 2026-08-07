@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
   Search,
@@ -507,9 +508,9 @@ export function CompanyList({
       )}
 
       {/* ── AI COMPANY MATCH & GAP ANALYZER MODAL ── */}
-      {selectedMatchCompany && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-          <div className="surface border border-border rounded-3xl max-w-2xl w-full p-6 sm:p-8 space-y-6 shadow-2xl relative my-8">
+      {selectedMatchCompany && typeof window !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[99999] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="surface border border-orange-500/30 rounded-3xl max-w-2xl w-full p-6 sm:p-8 space-y-6 shadow-2xl relative my-auto max-h-[90vh] overflow-y-auto">
             {/* Close Button */}
             <button
               onClick={() => setSelectedMatchCompany(null)}
@@ -550,9 +551,12 @@ export function CompanyList({
 
             {/* Error State */}
             {matchError && (
-              <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2">
-                <AlertCircle className="size-4 shrink-0" />
-                {matchError}
+              <div className="p-5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-3">
+                <AlertCircle className="size-5 shrink-0 text-red-400" />
+                <div>
+                  <p className="font-bold text-red-400">No Resume Found</p>
+                  <p className="text-muted mt-0.5">{matchError}</p>
+                </div>
               </div>
             )}
 
@@ -570,48 +574,45 @@ export function CompanyList({
                       {matchData.tailored_advice}
                     </p>
                   </div>
-                  <div className="surface border border-border px-5 py-3 rounded-2xl text-center shrink-0">
-                    <p className="text-[10px] font-bold uppercase text-muted">Readiness Score</p>
-                    <div className="flex items-center justify-center gap-1 mt-0.5">
-                      <span className="text-3xl font-extrabold font-mono text-orange-400">{matchData.match_score}</span>
-                      <span className="text-xs font-bold text-muted">/100</span>
-                    </div>
+                  <div className="flex flex-col items-center justify-center p-4 rounded-2xl bg-orange-500/15 border border-orange-500/30 min-w-[120px]">
+                    <span className="text-3xl font-black text-orange-400">{matchData.match_score}%</span>
+                    <span className="text-[10px] font-bold uppercase text-orange-400 tracking-wider mt-0.5">Match Score</span>
                   </div>
                 </div>
 
-                {/* Skills Grid */}
-                <div className="grid sm:grid-cols-2 gap-4">
-                  {/* Matched Skills */}
-                  <div className="surface-2 border border-green-500/25 rounded-2xl p-4 space-y-2">
-                    <p className="text-xs font-bold text-green-400 flex items-center gap-1.5">
-                      <CheckCircle2 className="size-4" /> Matched Skills ({matchData.matched_skills.length})
+                {/* Key Gaps & Strengths */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-2xl surface-2 border border-border space-y-2">
+                    <p className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                      <CheckCircle2 className="size-4" /> Strong Competencies
                     </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {matchData.matched_skills.map((s) => (
-                        <span key={s} className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-green-500/15 text-green-400 border border-green-500/25">
-                          ✓ {s}
-                        </span>
+                    <ul className="text-xs text-secondary space-y-1">
+                      {matchData.matched_skills.map((str: string, i: number) => (
+                        <li key={i} className="flex items-start gap-1.5">
+                          <span className="text-emerald-400 font-bold">•</span>
+                          <span>{str}</span>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </div>
 
-                  {/* Skill Gaps */}
-                  <div className="surface-2 border border-amber-500/25 rounded-2xl p-4 space-y-2">
+                  <div className="p-4 rounded-2xl surface-2 border border-border space-y-2">
                     <p className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-                      <Brain className="size-4" /> Skills to Bridge ({matchData.missing_skills.length})
+                      <AlertCircle className="size-4" /> Recommended Gaps to Bridge
                     </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {matchData.missing_skills.map((s) => (
-                        <span key={s} className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/25">
-                          + {s}
-                        </span>
+                    <ul className="text-xs text-secondary space-y-1">
+                      {matchData.missing_skills.map((skill, i) => (
+                        <li key={i} className="flex items-start gap-1.5">
+                          <span className="text-amber-400 font-bold">•</span>
+                          <span>{skill}</span>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </div>
                 </div>
 
                 {/* Priority DSA Focus Topics */}
-                {matchData.top_dsa_focus.length > 0 && (
+                {matchData.top_dsa_focus && matchData.top_dsa_focus.length > 0 && (
                   <div className="surface-2 border border-border rounded-2xl p-4 space-y-2">
                     <p className="text-xs font-bold text-primary flex items-center gap-1.5">
                       <Code2 className="size-4 text-orange-400" /> Priority DSA Topics to Practice for {selectedMatchCompany.name}
@@ -630,39 +631,17 @@ export function CompanyList({
                   </div>
                 )}
 
-                {/* 14-Day Sprint Roadmap */}
-                {matchData.sprint_plan && (
-                  <div className="space-y-3">
-                    <p className="text-xs font-bold uppercase tracking-wider text-muted">Tailored 14-Day Interview Sprint:</p>
-                    <div className="grid sm:grid-cols-2 gap-3 text-xs">
-                      {matchData.sprint_plan.map((sp, i) => (
-                        <div key={i} className="surface-2 border border-border rounded-2xl p-4 space-y-2">
-                          <p className="font-bold text-orange-400">{sp.week}</p>
-                          <p className="text-secondary font-medium">{sp.focus}</p>
-                          <ul className="space-y-1 text-muted pl-1">
-                            {sp.action_items.map((act, j) => (
-                              <li key={j} className="flex items-start gap-1.5 text-[11px]">
-                                <span className="text-orange-400 font-bold">•</span> {act}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Bottom Action Footer */}
-                <div className="flex items-center gap-3 pt-2">
+                {/* Target Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
                   <Link
                     href="/dashboard/resume/rewrite"
-                    className="flex-1 py-3 rounded-2xl font-bold text-xs bg-orange-500 text-white hover:brightness-110 shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2 text-center"
+                    className="flex-1 px-5 py-3 rounded-2xl font-bold text-xs bg-orange-500 hover:bg-orange-600 text-white flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 transition-all text-center"
                   >
                     <Sparkles className="size-4" /> Optimize Resume for {selectedMatchCompany.name}
                   </Link>
                   <Link
                     href={`/dashboard/companies/${selectedMatchCompany.slug}`}
-                    className="px-5 py-3 rounded-2xl font-bold text-xs surface-2 border border-border text-secondary hover:text-primary flex items-center justify-center gap-1.5"
+                    className="px-5 py-3 rounded-2xl font-bold text-xs surface-2 border border-border text-secondary hover:text-primary flex items-center justify-center gap-1.5 text-center"
                   >
                     View Interview Process →
                   </Link>
@@ -670,7 +649,8 @@ export function CompanyList({
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

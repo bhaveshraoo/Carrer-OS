@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { fetchActiveJobsWithDetails } from "@/lib/jobs/jobs";
+import { syncAndFetchSupabaseJobs } from "@/lib/jobs/sync-engine";
 
 export async function GET(request: Request) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    const jobs = await fetchActiveJobsWithDetails(supabase, user?.id);
+    const jobs = await syncAndFetchSupabaseJobs(supabase, user?.id);
 
     const uniqueCompanies = new Set(jobs.map((j) => j.company_id || j.company_name)).size;
     const internships = jobs.filter(

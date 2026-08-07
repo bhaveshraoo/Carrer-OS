@@ -23,6 +23,7 @@
 .env
 .env.local
 .env*.local
+env_backup.txt
 
 # vercel
 .vercel

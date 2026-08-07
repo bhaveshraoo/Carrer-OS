@@ -1,7 +1,11 @@
 import fs from "fs";
 import path from "path";
+import os from "os";
 
-const STORE_PATH = path.join(process.cwd(), ".gemini", "roadmaps_store.json");
+const isServerless = Boolean(process.env.VERCEL || process.env.NODE_ENV === "production");
+const STORE_PATH = isServerless
+  ? path.join(os.tmpdir(), "roadmaps_store.json")
+  : path.join(process.cwd(), ".gemini", "roadmaps_store.json");
 
 interface LocalStore {
   roadmaps: any[];
@@ -10,34 +14,41 @@ interface LocalStore {
   certificates: any[];
 }
 
+// In-memory fallback if filesystem is read-only
+let memoryStore: LocalStore = { roadmaps: [], tasks: [], streaks: {}, certificates: [] };
+
 function ensureStoreExists(): LocalStore {
-  const dir = path.dirname(STORE_PATH);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-
-  if (!fs.existsSync(STORE_PATH)) {
-    const initial: LocalStore = { roadmaps: [], tasks: [], streaks: {}, certificates: [] };
-    fs.writeFileSync(STORE_PATH, JSON.stringify(initial, null, 2), "utf8");
-    return initial;
-  }
-
   try {
+    const dir = path.dirname(STORE_PATH);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    if (!fs.existsSync(STORE_PATH)) {
+      fs.writeFileSync(STORE_PATH, JSON.stringify(memoryStore, null, 2), "utf8");
+      return memoryStore;
+    }
+
     const raw = fs.readFileSync(STORE_PATH, "utf8");
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    memoryStore = parsed;
+    return parsed;
   } catch (e) {
-    const initial: LocalStore = { roadmaps: [], tasks: [], streaks: {}, certificates: [] };
-    fs.writeFileSync(STORE_PATH, JSON.stringify(initial, null, 2), "utf8");
-    return initial;
+    return memoryStore;
   }
 }
 
 export function saveLocalStore(store: LocalStore) {
-  const dir = path.dirname(STORE_PATH);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  memoryStore = store;
+  try {
+    const dir = path.dirname(STORE_PATH);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(STORE_PATH, JSON.stringify(store, null, 2), "utf8");
+  } catch (e) {
+    // Fail silently on read-only serverless filesystem, keeping in-memory state
   }
-  fs.writeFileSync(STORE_PATH, JSON.stringify(store, null, 2), "utf8");
 }
 
 export function getLocalRoadmaps(userId: string) {

@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { table } from "@/lib/supabase/typed-table";
 import { toYmd, distributeTopicsAcrossDays } from "@/lib/roadmaps/planner";
-import { getLocalRoadmap, getLocalTasks, getLocalStreak, getLocalCertificate, updateLocalRoadmap, deleteLocalRoadmap, saveLocalRoadmap } from "@/lib/roadmaps/store";
+import { getLocalRoadmap, getLocalTasks, getLocalStreak, getLocalCertificate, saveLocalRoadmap, deleteLocalRoadmap } from "@/lib/roadmaps/store";
 import { PREDEFINED_TRACKS } from "@/lib/roadmaps/tracks-data";
+import { SEED_ROADMAPS } from "@/lib/roadmaps/seed-roadmaps";
 
 const DEMO_USER_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -27,8 +28,23 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       roadmap = getLocalRoadmap(roadmapId);
     }
 
+    // Auto-fallback for seed roadmaps if not found in store
     if (!roadmap) {
-      return NextResponse.json({ success: false, error: "Roadmap not found" }, { status: 404 });
+      const seedMatch = SEED_ROADMAPS.find((r) => r.id === roadmapId || r.track_id === roadmapId);
+      if (seedMatch) {
+        roadmap = {
+          id: seedMatch.id,
+          user_id: userId,
+          track_id: seedMatch.track_id,
+          title: seedMatch.title,
+          is_custom: seedMatch.is_custom,
+          start_date: seedMatch.start_date,
+          target_end_date: seedMatch.target_end_date,
+          daily_hours: seedMatch.daily_hours,
+          status: seedMatch.status,
+          created_at: new Date().toISOString(),
+        };
+      }
     }
 
     // 2. Fetch Tasks for this Roadmap
@@ -44,22 +60,23 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       tasks = getLocalTasks(roadmapId);
     }
 
-    // Auto-upgrade: if tasks are missing parent_topic_id they were made by the old planner.
-    // Regenerate the full schedule from the track definition so the UI can group correctly.
-    const needsUpgrade = tasks.length > 0 && !tasks[0].parent_topic_id;
-    if (needsUpgrade && roadmap.track_id && roadmap.track_id !== "custom") {
+    // Auto-generate or upgrade tasks if missing or old format
+    const needsGen = tasks.length === 0 || (tasks.length > 0 && !tasks[0].parent_topic_id);
+    if (needsGen && roadmap.track_id && roadmap.track_id !== "custom") {
       const track = PREDEFINED_TRACKS.find((tr) => tr.id === roadmap.track_id) || PREDEFINED_TRACKS[0];
-      const { tasks: upgradedTasks } = distributeTopicsAcrossDays({
+      const startDate = roadmap.start_date ? new Date(roadmap.start_date) : new Date();
+      const endDate = roadmap.target_end_date ? new Date(roadmap.target_end_date) : new Date(Date.now() + 90 * 86400000);
+      const months = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 30))) || 3;
+
+      const { tasks: generatedTasks } = distributeTopicsAcrossDays({
         topics: track.topics,
         startDateStr: roadmap.start_date || toYmd(new Date()),
         dailyHours: roadmap.daily_hours || 2,
-        durationMonths: Math.max(1, Math.round(
-          (new Date(roadmap.target_end_date).getTime() - new Date(roadmap.start_date).getTime()) / (1000 * 60 * 60 * 24 * 30)
-        )),
+        durationMonths: months,
       });
-      tasks = upgradedTasks.map((t, idx) => ({
+      tasks = generatedTasks.map((t, idx) => ({
         ...t,
-        id: `task-upg-${idx}`,
+        id: `task-gen-${roadmapId}-${idx}`,
         roadmap_id: roadmapId,
         user_id: userId,
         completed_at: null,

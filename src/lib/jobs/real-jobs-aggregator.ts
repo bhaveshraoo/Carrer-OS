@@ -8,7 +8,7 @@ import { isJobActive, type JobWithCompany } from "./jobs";
  */
 let cachedRealJobs: JobWithCompany[] | null = null;
 let lastFetchTimestamp = 0;
-const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour cache
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5-minute fresh cache
 
 async function fetchFreshJobs(): Promise<JobWithCompany[]> {
   try {
@@ -27,9 +27,15 @@ async function fetchFreshJobs(): Promise<JobWithCompany[]> {
     }
 
     const rawCombined = [...leverJobs, ...ghJobs, ...remotiveJobs, ...fillJobs].slice(0, 30);
+    const nowISO = new Date().toISOString();
+    const futureISO = new Date(Date.now() + 30 * 86400000).toISOString();
+
     const sequentialJobs: JobWithCompany[] = rawCombined.map((job, idx) => ({
       ...job,
       id: String(idx + 1),
+      created_at: job.created_at || nowISO,
+      last_date: job.last_date || futureISO,
+      status: "active" as const,
     }));
 
     cachedRealJobs = sequentialJobs;

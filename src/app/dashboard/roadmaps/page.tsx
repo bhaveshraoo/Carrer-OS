@@ -63,14 +63,14 @@ export default function RoadmapsHubPage() {
     try {
       const res = await fetch("/api/roadmaps");
       const data = await res.json();
-      if (data.success && data.roadmaps && data.roadmaps.length > 0) {
+      if (data.success && data.roadmaps && Array.isArray(data.roadmaps)) {
         setRoadmaps(data.roadmaps);
       } else {
-        setRoadmaps(SEED_ROADMAPS);
+        setRoadmaps([]);
       }
     } catch (e) {
-      console.error("Error loading roadmaps, using seed fallback:", e);
-      setRoadmaps(SEED_ROADMAPS);
+      console.error("Error loading roadmaps:", e);
+      setRoadmaps([]);
     } finally {
       setLoading(false);
     }
@@ -509,22 +509,88 @@ export default function RoadmapsHubPage() {
             ))}
           </div>
         ) : (
-          <div className="surface border border-border rounded-3xl p-8 text-center space-y-4">
-            <div className="size-14 rounded-3xl bg-orange-500/15 text-orange-500 flex items-center justify-center font-bold text-2xl mx-auto border border-orange-500/30">
-              <Compass className="size-7" />
+          <div className="space-y-8 animate-fade-up">
+            {/* 1. HERO CTA BLOCK */}
+            <div className="surface border border-orange-500/30 rounded-3xl p-8 sm:p-10 text-center space-y-5 bg-gradient-to-br from-orange-500/10 via-surface to-surface shadow-xl relative overflow-hidden">
+              <div className="size-16 rounded-3xl bg-orange-500/15 text-orange-500 flex items-center justify-center font-bold text-2xl mx-auto border border-orange-500/30 shadow-lg shadow-orange-500/10">
+                <Compass className="size-8 text-orange-500" />
+              </div>
+
+              <div className="space-y-2 max-w-xl mx-auto">
+                <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-primary tracking-tight">
+                  Generate Your Study Roadmap & Start Learning
+                </h2>
+                <p className="text-xs sm:text-sm text-secondary leading-relaxed font-medium">
+                  You haven&apos;t started any study roadmaps yet. Choose a predefined career track below or prompt Gemini AI for a custom topic to build your personalized day-by-day learning schedule!
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                <button
+                  onClick={() => setIsCreating(true)}
+                  className="px-8 py-3.5 rounded-2xl font-extrabold text-xs bg-orange-500 hover:bg-orange-600 text-white shadow-xl shadow-orange-500/25 transition-all inline-flex items-center gap-2"
+                >
+                  <Sparkles className="size-4" /> Create Custom AI Roadmap
+                </button>
+              </div>
             </div>
-            <div className="space-y-1 max-w-md mx-auto">
-              <h3 className="font-display text-lg font-bold text-primary">No Active Study Roadmaps Yet</h3>
-              <p className="text-xs text-muted">
-                Create your first personalized study path from predefined tracks (DSA, System Design, Full Stack) or generate a custom track using Gemini AI!
-              </p>
+
+            {/* 2. DEMO / TEMPLATE CAREER TRACKS SECTION */}
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center justify-between px-1">
+                <div>
+                  <h3 className="font-display text-lg font-extrabold text-primary flex items-center gap-2">
+                    <BookOpen className="size-4 text-orange-500" /> Available Career Track Templates
+                  </h3>
+                  <p className="text-xs text-muted">Select any template to instantiate your personalized study roadmap instantly</p>
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {PREDEFINED_TRACKS.map((track) => (
+                  <div
+                    key={track.id}
+                    className="surface border border-border rounded-3xl p-6 space-y-4 shadow-sm hover:border-orange-500/50 hover:shadow-orange-500/10 hover:shadow-lg transition-all flex flex-col justify-between"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="size-10 rounded-2xl bg-orange-500/15 text-orange-500 flex items-center justify-center font-bold">
+                          {getTrackIcon(track.iconName)}
+                        </div>
+                        <span className="text-[10px] font-mono font-bold text-teal-400 bg-teal-500/10 px-2.5 py-0.5 rounded-full border border-teal-500/20">
+                          Template
+                        </span>
+                      </div>
+
+                      <div className="space-y-1">
+                        <h4 className="font-display text-base font-extrabold text-primary">
+                          {track.title}
+                        </h4>
+                        <p className="text-xs text-secondary leading-relaxed line-clamp-3">
+                          {track.description}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-border flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-muted uppercase">
+                        {track.topics.length} Modules · ~{track.estimatedTotalHours}h
+                      </span>
+
+                      <button
+                        onClick={() => {
+                          setSelectedTrackId(track.id);
+                          setIsCreating(true);
+                        }}
+                        className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-500/15 hover:bg-orange-500 text-orange-400 hover:text-white border border-orange-500/30 transition-all flex items-center gap-1.5"
+                      >
+                        Start Track <ArrowRight className="size-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <button
-              onClick={() => setIsCreating(true)}
-              className="px-6 py-2.5 rounded-2xl font-bold text-xs bg-orange-500 text-white hover:brightness-110 shadow-md"
-            >
-              Start First Roadmap Now
-            </button>
           </div>
         )}
       </div>

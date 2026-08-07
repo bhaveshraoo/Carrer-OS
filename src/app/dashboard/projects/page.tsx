@@ -45,46 +45,28 @@ const CATEGORIES = [
   "Open Source",
 ];
 
-// Mock Candidate Applications
-const MOCK_USER_APPLICATIONS = [
-  {
-    id: "user-app-1",
-    project: MOCK_PROJECTS[0], // Autonomous Code Refactoring Agent
-    domain: "Frontend Engineer",
-    status: "selected", // 'selected' | 'interview_scheduled' | 'not_selected'
-    appliedAt: "2026-07-24",
-    offerLetterUrl: "https://careeros.app/offers/OFFER-COS-2026-9821.pdf",
-    discordGroupUrl: "https://discord.gg/careeros-team-alpha",
-    feedback: null,
-  },
-  {
-    id: "user-app-2",
-    project: MOCK_PROJECTS[1], // AI Voice Assistant
-    domain: "AI/ML Engineer",
-    status: "interview_scheduled",
-    appliedAt: "2026-07-25",
-    interviewDate: "July 29, 2026 at 4:00 PM IST",
-    meetLink: "https://meet.google.com/xyz-abc-123",
-    mentorName: "Priya Sharma",
-    feedback: null,
-  },
-  {
-    id: "user-app-3",
-    project: MOCK_PROJECTS[2], // Open Source DevTools
-    domain: "Backend Engineer",
-    status: "not_selected",
-    appliedAt: "2026-07-20",
-    feedback: "Your technical background in Node.js is strong, but the candidate selected had 2+ prior production WebSockets deployments. Recommended: Complete the WebSocket module on CareerOS DSA Prep to boost your rank for next week's cohort.",
-    recommendedProject: MOCK_PROJECTS[3],
-  },
-];
-
 export default function ProjectsMarketplacePage() {
   const { notify } = useNotifications();
   const [activeTab, setActiveTab] = useState<"marketplace" | "my_applications">("marketplace");
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [sortBy, setSortBy] = useState<"latest" | "popular" | "starting_soon" | "highest_match">("highest_match");
+
+  // Dynamic Applications state (starts empty for fresh accounts)
+  const [userApplications, setUserApplications] = useState<any[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = localStorage.getItem("careeros_user_project_applications");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const appliedCount = userApplications.length;
+  const confirmedCount = userApplications.filter((a) => a.status === "selected").length;
+  const interviewCount = userApplications.filter((a) => a.status === "interview_scheduled").length;
+  const notSelectedCount = userApplications.filter((a) => a.status === "not_selected").length;
 
   // Filter projects
   const filteredProjects = MOCK_PROJECTS.filter((p) => {
@@ -170,7 +152,7 @@ export default function ProjectsMarketplacePage() {
               : "text-secondary hover:text-primary"
           }`}
         >
-          <CheckCircle2 className="size-4" /> My Tracker (3)
+          <CheckCircle2 className="size-4" /> My Tracker ({appliedCount})
         </button>
       </div>
 
@@ -182,25 +164,45 @@ export default function ProjectsMarketplacePage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="surface p-4 rounded-2xl border border-border text-center space-y-1">
               <p className="text-[10px] font-bold text-muted uppercase tracking-wider">Applied Projects</p>
-              <p className="font-display text-2xl font-extrabold text-primary">3</p>
+              <p className="font-display text-2xl font-extrabold text-primary">{appliedCount}</p>
             </div>
             <div className="surface p-4 rounded-2xl border border-teal-500/30 text-center space-y-1">
               <p className="text-[10px] font-bold text-teal-400 uppercase tracking-wider">Confirmed & Selected</p>
-              <p className="font-display text-2xl font-extrabold text-teal-400">1</p>
+              <p className="font-display text-2xl font-extrabold text-teal-400">{confirmedCount}</p>
             </div>
             <div className="surface p-4 rounded-2xl border border-orange-500/30 text-center space-y-1">
               <p className="text-[10px] font-bold text-orange-400 uppercase tracking-wider">Interview Scheduled</p>
-              <p className="font-display text-2xl font-extrabold text-orange-400">1</p>
+              <p className="font-display text-2xl font-extrabold text-orange-400">{interviewCount}</p>
             </div>
             <div className="surface p-4 rounded-2xl border border-border text-center space-y-1">
               <p className="text-[10px] font-bold text-muted uppercase tracking-wider">Not Selected</p>
-              <p className="font-display text-2xl font-extrabold text-secondary">1</p>
+              <p className="font-display text-2xl font-extrabold text-secondary">{notSelectedCount}</p>
             </div>
           </div>
 
-          {/* Applications Cards List */}
-          <div className="space-y-4">
-            {MOCK_USER_APPLICATIONS.map((app) => (
+          {/* Empty State when fresh user has not applied to any project cohort */}
+          {userApplications.length === 0 ? (
+            <div className="surface rounded-3xl p-10 border border-border text-center space-y-4 my-6">
+              <div className="size-16 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 flex items-center justify-center mx-auto">
+                <Rocket className="size-8 text-orange-500" />
+              </div>
+              <div className="space-y-1 max-w-md mx-auto">
+                <h3 className="font-display text-xl font-extrabold text-primary">No Active Project Applications Yet</h3>
+                <p className="text-xs text-secondary leading-relaxed">
+                  You haven&apos;t applied to any project cohorts yet. Browse the Marketplace to pitch for your preferred domain and join an active engineering team!
+                </p>
+              </div>
+              <button
+                onClick={() => setActiveTab("marketplace")}
+                className="px-6 py-2.5 rounded-2xl text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-500/20 transition-all inline-flex items-center gap-2"
+              >
+                <Briefcase className="size-4" /> Explore Marketplace Cohorts
+              </button>
+            </div>
+          ) : (
+            /* Applications Cards List */
+            <div className="space-y-4">
+              {userApplications.map((app) => (
               <div
                 key={app.id}
                 className="surface rounded-3xl p-6 sm:p-7 border border-border space-y-5 shadow-sm hover:border-orange-500/30 transition-all"
@@ -323,6 +325,7 @@ export default function ProjectsMarketplacePage() {
               </div>
             ))}
           </div>
+          )}
 
         </div>
       )}

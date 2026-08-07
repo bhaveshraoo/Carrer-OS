@@ -45,13 +45,8 @@ export async function GET() {
 
     if (!latestResume) {
       return NextResponse.json({
-        resume: {
-          id: "default-candidate-resume",
-          file_name: "Jake_Resume_Software_Engineer.pdf",
-          status: "analyzed",
-          raw_text: "Fullstack Engineer proficient in React, Next.js, Node.js, TypeScript, PostgreSQL. Architected RESTful endpoints, optimized PostgreSQL indexes reducing latency by 42%.",
-        },
-        ats_score: 87,
+        resume: null,
+        ats_score: null,
       });
     }
 
@@ -74,13 +69,8 @@ export async function GET() {
   } catch (err: any) {
     console.error("Error fetching latest resume:", err);
     return NextResponse.json({
-      resume: {
-        id: "default-candidate-resume",
-        file_name: "Jake_Resume_Software_Engineer.pdf",
-        status: "analyzed",
-        raw_text: "Fullstack Engineer proficient in React, Next.js, Node.js, TypeScript, PostgreSQL.",
-      },
-      ats_score: 87,
+      resume: null,
+      ats_score: null,
     });
   }
 }
