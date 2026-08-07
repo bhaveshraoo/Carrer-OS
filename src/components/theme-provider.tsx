@@ -10,18 +10,18 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
-  theme: "dark",
+  theme: "light",
   toggle: () => {},
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("dark");
+  const [theme, setTheme] = useState<Theme>("light");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Read saved preference or default to dark
+    // Read saved preference or default to light
     const saved = localStorage.getItem("careeros-theme") as Theme | null;
-    const initial: Theme = saved === "light" ? "light" : "dark";
+    const initial: Theme = saved === "dark" ? "dark" : "light";
     setTheme(initial);
     document.documentElement.setAttribute("data-theme", initial);
     setMounted(true);
@@ -41,7 +41,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         dangerouslySetInnerHTML={{
           __html: `
             (function(){
-              var t = localStorage.getItem('careeros-theme') || 'dark';
+              var t = localStorage.getItem('careeros-theme') || 'light';
               document.documentElement.setAttribute('data-theme', t);
             })()
           `,

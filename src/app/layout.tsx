@@ -38,7 +38,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/favicon.png" />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){var t=localStorage.getItem('careeros-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})()`,
+            __html: `(function(){var t=localStorage.getItem('careeros-theme')||'light';document.documentElement.setAttribute('data-theme',t);})()`,
           }}
         />
       </head>
