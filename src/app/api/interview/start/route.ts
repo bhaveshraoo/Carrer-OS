@@ -122,10 +122,10 @@ export async function POST(req: Request) {
     const firstQuestion: InterviewQuestion = {
       id: `q_${Date.now()}_1`,
       session_id: session.id,
-      section: blueprint.sections[0]?.name || "Introduction",
+      section: "Welcome & Greeting",
       question_number: 1,
-      question_text: blueprint.core_questions[0] || `Welcome! Tell me about your background as a ${job_role}.`,
-      expected_aspects: ["Background", "Key projects", "Technical strengths"],
+      question_text: `Hey! Welcome to your ${job_role} interview at ${company_name}. I'm your AI interviewer for today's session. Are you ready to get started?`,
+      expected_aspects: ["Readiness", "Greeting", "Introduction"],
       asked_at: new Date().toISOString(),
     };
 

@@ -30,6 +30,8 @@ import {
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import { useNoiseDetector } from "@/hooks/use-noise-detector";
 import { useCameraPresence } from "@/hooks/use-camera-presence";
+import { IntegrityEngine, type VisionFrameData } from "@/lib/interview/integrityEngine";
+import { playGeminiHumanVoice, stopGeminiHumanVoice } from "@/lib/interview/humanVoicePlayer";
 import type { InterviewSession, InterviewQuestion } from "@/lib/interview/schema";
 
 export default function InterviewSimulatorPage({
@@ -51,31 +53,141 @@ export default function InterviewSimulatorPage({
   const [timerActive, setTimerActive] = useState(false);
 
   // UX Feature States
+  const [hasJoinedLobby, setHasJoinedLobby] = useState(false);
+  const [cameraEnabled, setCameraEnabled] = useState(true);
+  const [micEnabled, setMicEnabled] = useState(true);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [isSpeakingQuestion, setIsSpeakingQuestion] = useState(false);
   const [showStarHelper, setShowStarHelper] = useState(false);
   const [endingInterview, setEndingInterview] = useState(false);
 
-  const answerStartTimeRef = useRef<number>(Date.now());
+  // Tab Switch Detector States
+  const [tabSwitchCount, setTabSwitchCount] = useState<number>(0);
+  const [showTabWarningModal, setShowTabWarningModal] = useState<boolean>(false);
+  const [isTerminatedByTabSwitch, setIsTerminatedByTabSwitch] = useState<boolean>(false);
 
+  const answerStartTimeRef = useRef<number>(Date.now());
+  const integrityEngineRef = useRef<IntegrityEngine | null>(null);
+
+  // Initialize Client-Side Integrity Engine for browser-only CV processing
+  useEffect(() => {
+    integrityEngineRef.current = new IntegrityEngine(sessionId);
+    return () => {
+      integrityEngineRef.current?.destroy();
+    };
+  }, [sessionId]);
+
+  const handleFrameSample = useCallback((frameData: VisionFrameData) => {
+    integrityEngineRef.current?.processFrame(frameData);
+  }, []);
+
+  // ── TAB SWITCH DETECTOR EFFECT ──
+  useEffect(() => {
+    if (!hasJoinedLobby || isTerminatedByTabSwitch) return;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setTabSwitchCount((prevCount) => {
+          const newCount = prevCount + 1;
+
+          if (newCount === 1) {
+            setShowTabWarningModal(true);
+          } else if (newCount >= 2) {
+            setIsTerminatedByTabSwitch(true);
+            setTimerActive(false);
+            if (typeof window !== "undefined" && "speechSynthesis" in window) {
+              window.speechSynthesis.cancel();
+            }
+          }
+
+          return newCount;
+        });
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [hasJoinedLobby, isTerminatedByTabSwitch]);
 
   // Hooks
   const { isListening, transcript, startListening, stopListening, setTranscript } = useSpeechRecognition();
   const { noiseLevel, dbLevel } = useNoiseDetector(isListening);
-  const { videoRef, metrics: cameraMetrics } = useCameraPresence();
+  const { videoRef, metrics: cameraMetrics } = useCameraPresence(handleFrameSample);
 
-  // Function to speak interviewer questions via Web Speech API
-  const speakQuestion = useCallback((text: string) => {
-    if (!voiceEnabled || typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  // Function to speak interviewer questions via High-Quality Natural Human Voice Engine
+  const speakQuestion = useCallback(async (text: string) => {
+    if (!voiceEnabled || typeof window === "undefined") return;
     try {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.95;
-      utterance.pitch = 1.0;
-      utterance.onstart = () => setIsSpeakingQuestion(true);
-      utterance.onend = () => setIsSpeakingQuestion(false);
-      utterance.onerror = () => setIsSpeakingQuestion(false);
-      window.speechSynthesis.speak(utterance);
+      setIsSpeakingQuestion(true);
+      stopGeminiHumanVoice();
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+
+      // 1. Try Gemini 2.0 Human TTS API
+      try {
+        const res = await fetch("/api/interview/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+
+        const data = await res.json();
+        if (data.success && data.audioBase64) {
+          await playGeminiHumanVoice(
+            data.audioBase64,
+            data.mimeType || "audio/mp3",
+            () => setIsSpeakingQuestion(true),
+            () => setIsSpeakingQuestion(false)
+          );
+          return;
+        }
+      } catch {
+        // Fallback to high-quality browser voice picker
+      }
+
+      // 2. High-Quality Natural Human Voice Selection (Safari / Chrome / Edge)
+      if ("speechSynthesis" in window) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.92; // Natural speech rate
+        utterance.pitch = 1.0;
+
+        const voices = window.speechSynthesis.getVoices();
+        // Priority list of realistic human voices across Safari, Chrome, and Edge
+        const preferredVoices = [
+          "Google US English",
+          "Samantha (Enhanced)",
+          "Karen (Enhanced)",
+          "Microsoft Jenny Online (Natural) - English (United States)",
+          "Microsoft Guy Online (Natural) - English (United States)",
+          "Samantha",
+          "Karen",
+          "Daniel",
+          "Alex",
+        ];
+
+        let selectedVoice = voices.find((v) =>
+          preferredVoices.some((pref) => v.name.toLowerCase().includes(pref.toLowerCase()))
+        );
+
+        if (!selectedVoice) {
+          selectedVoice = voices.find((v) => v.lang.startsWith("en") && v.name.includes("Natural"));
+        }
+
+        if (selectedVoice) {
+          utterance.voice = selectedVoice;
+        }
+
+        utterance.onstart = () => setIsSpeakingQuestion(true);
+        utterance.onend = () => setIsSpeakingQuestion(false);
+        utterance.onerror = () => setIsSpeakingQuestion(false);
+
+        window.speechSynthesis.speak(utterance);
+      } else {
+        setIsSpeakingQuestion(false);
+      }
     } catch {
       setIsSpeakingQuestion(false);
     }
@@ -95,9 +207,7 @@ export default function InterviewSimulatorPage({
             const lastQ = data.questions[data.questions.length - 1];
             setCurrentQuestion(lastQ);
             setQuestionNumber(lastQ.question_number);
-            speakQuestion(lastQ.question_text);
           }
-          setTimerActive(true);
         } else {
           alert("Session not found");
           router.push("/dashboard/interview");
@@ -109,7 +219,7 @@ export default function InterviewSimulatorPage({
       }
     }
     loadSession();
-  }, [sessionId, router, speakQuestion]);
+  }, [sessionId, router]);
 
   // Countdown timer effect
   useEffect(() => {
@@ -244,6 +354,199 @@ export default function InterviewSimulatorPage({
         </div>
         <p className="font-display text-base font-bold text-foreground">Initializing AI Interview Room...</p>
         <p className="text-xs text-muted-foreground">Calibrating voice recognition and local camera feed</p>
+      </div>
+    );
+  }
+
+  // ── TAB SWITCH STRICTLY TERMINATED FULL-SCREEN OVERLAY ──
+  if (isTerminatedByTabSwitch) {
+    return (
+      <div className="min-h-[75vh] flex items-center justify-center p-6 animate-fade-in text-foreground">
+        <div className="max-w-lg w-full bg-card border-2 border-rose-500/40 rounded-3xl p-8 sm:p-10 text-center space-y-6 shadow-2xl bg-gradient-to-b from-rose-500/10 via-card to-card relative overflow-hidden">
+          <div className="size-20 rounded-full bg-rose-500/20 text-rose-500 flex items-center justify-center mx-auto border-2 border-rose-500/40 animate-pulse shadow-lg">
+            <XCircle className="size-10" />
+          </div>
+
+          <div className="space-y-2">
+            <span className="text-[10px] font-extrabold uppercase tracking-widest text-rose-500 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20">
+              Integrity Violation
+            </span>
+            <h1 className="font-display text-2xl font-black text-foreground tracking-tight pt-2">
+              TAB SWITCH STRICTLY NOT ALLOWED
+            </h1>
+            <p className="text-xs text-muted-foreground leading-relaxed pt-1">
+              Your AI interview session was automatically terminated because tab switching was detected twice. To ensure interview integrity and security, candidates must remain on the active test window at all times.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-muted/60 border border-border/80 text-xs text-left space-y-2 text-muted-foreground font-medium">
+            <div className="flex justify-between border-b border-border/50 pb-1">
+              <span>Violations Recorded:</span>
+              <strong className="text-rose-500 font-bold">2 Tab Switches</strong>
+            </div>
+            <div className="flex justify-between">
+              <span>Status:</span>
+              <strong className="text-rose-500 font-bold">Session Terminated</strong>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setIsTerminatedByTabSwitch(false);
+              setShowTabWarningModal(false);
+              setTabSwitchCount(0);
+              setHasJoinedLobby(false);
+            }}
+            className="w-full py-4 rounded-2xl font-extrabold text-sm bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
+          >
+            <RotateCcw className="size-5" /> Rejoin Interview
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── GOOGLE MEET STYLE PRE-JOIN WAITING ROOM LOBBY ──
+  if (!hasJoinedLobby) {
+    return (
+      <div className="max-w-5xl mx-auto space-y-8 animate-fade-in py-6 text-foreground">
+        {/* Top Header */}
+        <div className="flex items-center justify-between pb-4 border-b border-border">
+          <div className="flex items-center gap-3">
+            <div className="size-10 rounded-2xl bg-teal-500/15 text-teal-500 flex items-center justify-center font-bold border border-teal-500/30">
+              <Video className="size-5" />
+            </div>
+            <div>
+              <h1 className="font-display text-xl font-extrabold text-foreground">
+                {session.job_role} Interview Lobby
+              </h1>
+              <p className="text-xs text-muted-foreground flex items-center gap-2">
+                <span>{session.company_name}</span> • <span>{session.interview_type} ({session.difficulty})</span>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs font-mono bg-teal-500/10 text-teal-400 border border-teal-500/20 px-3 py-1.5 rounded-full font-bold">
+            <ShieldCheck className="size-4 text-teal-500" /> Ready to Join
+          </div>
+        </div>
+
+        {/* Google Meet Waiting Room Main Grid */}
+        <div className="grid lg:grid-cols-12 gap-8 items-center">
+          
+          {/* Left: Live Video Preview & Media Controls */}
+          <div className="lg:col-span-7 space-y-4">
+            <div className="relative aspect-video rounded-3xl bg-slate-900 border-2 border-border overflow-hidden shadow-2xl flex items-center justify-center group">
+              {cameraEnabled ? (
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover transform -scale-x-100"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center space-y-3 text-muted-foreground">
+                  <div className="size-20 rounded-full bg-slate-800 border border-border flex items-center justify-center">
+                    <Video className="size-8 text-muted-foreground" />
+                  </div>
+                  <p className="text-xs font-bold text-slate-400">Camera is turned off</p>
+                </div>
+              )}
+
+              {/* Bottom Floating Control Bar */}
+              <div className="absolute bottom-5 inset-x-0 flex items-center justify-center gap-4 z-10">
+                <button
+                  type="button"
+                  onClick={() => setMicEnabled(!micEnabled)}
+                  className={`size-12 rounded-full flex items-center justify-center shadow-xl transition-all border ${
+                    micEnabled
+                      ? "bg-slate-800/90 text-white hover:bg-slate-700 border-slate-600"
+                      : "bg-red-500 text-white hover:bg-red-600 border-red-400"
+                  }`}
+                  title={micEnabled ? "Mute Microphone" : "Unmute Microphone"}
+                >
+                  {micEnabled ? <Mic className="size-5" /> : <MicOff className="size-5" />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCameraEnabled(!cameraEnabled)}
+                  className={`size-12 rounded-full flex items-center justify-center shadow-xl transition-all border ${
+                    cameraEnabled
+                      ? "bg-slate-800/90 text-white hover:bg-slate-700 border-slate-600"
+                      : "bg-red-500 text-white hover:bg-red-600 border-red-400"
+                  }`}
+                  title={cameraEnabled ? "Turn Off Camera" : "Turn On Camera"}
+                >
+                  {cameraEnabled ? <Video className="size-5" /> : <Video className="size-5 opacity-40" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Device Readiness Status */}
+            <div className="grid grid-cols-3 gap-3 text-xs">
+              <div className="p-3 rounded-2xl bg-card border border-border flex items-center gap-2">
+                <span className={`size-2.5 rounded-full ${cameraEnabled ? "bg-emerald-400 animate-pulse" : "bg-red-400"}`} />
+                <span className="font-semibold text-secondary">Camera: {cameraEnabled ? "Ready" : "Off"}</span>
+              </div>
+              <div className="p-3 rounded-2xl bg-card border border-border flex items-center gap-2">
+                <span className={`size-2.5 rounded-full ${micEnabled ? "bg-emerald-400 animate-pulse" : "bg-red-400"}`} />
+                <span className="font-semibold text-secondary">Mic: {micEnabled ? "Ready" : "Off"}</span>
+              </div>
+              <div className="p-3 rounded-2xl bg-card border border-border flex items-center gap-2">
+                <span className="size-2.5 rounded-full bg-teal-400 animate-pulse" />
+                <span className="font-semibold text-secondary">AI Interviewer: Online</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Meeting Overview & Join CTA */}
+          <div className="lg:col-span-5 space-y-6">
+            <div className="bg-card border border-teal-500/30 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl bg-gradient-to-br from-teal-500/10 via-card to-card">
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-teal-500">Google Meet Waiting Room</span>
+                <h2 className="font-display text-2xl font-extrabold text-foreground">
+                  Ready to start your interview?
+                </h2>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Test your camera and microphone above before entering the room. Your AI interviewer is standby to begin your session.
+                </p>
+              </div>
+
+              <div className="space-y-2.5 pt-3 text-xs text-secondary border-t border-border/60">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Target Company:</span>
+                  <span className="font-bold text-foreground">{session.company_name}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Job Role:</span>
+                  <span className="font-bold text-foreground">{session.job_role}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Duration:</span>
+                  <span className="font-mono font-bold text-teal-500">{session.duration_minutes} mins</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setHasJoinedLobby(true);
+                  setTimerActive(true);
+                  if (currentQuestion) {
+                    speakQuestion(currentQuestion.question_text);
+                  }
+                }}
+                className="w-full py-4 rounded-2xl font-extrabold text-sm bg-teal-500 hover:bg-teal-600 text-white shadow-xl shadow-teal-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <Video className="size-5" /> Join Interview Now
+              </button>
+            </div>
+          </div>
+
+        </div>
       </div>
     );
   }
@@ -450,12 +753,12 @@ export default function InterviewSimulatorPage({
             )}
           </div>
 
-          {/* Bottom Action Controls */}
-          <div className="p-4 rounded-3xl bg-card border border-border/80 shadow-xs flex flex-wrap items-center justify-between gap-4">
+          {/* Upside Aligned Response & Action Control Bar */}
+          <div className="p-4 rounded-3xl bg-card border border-border/80 shadow-xs grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
             <button
               onClick={handleToggleMic}
               disabled={submittingAnswer || isHighNoise}
-              className={`px-6 py-3.5 rounded-2xl font-bold text-xs shadow-xs transition-all flex items-center gap-2 ${
+              className={`w-full py-3.5 px-4 rounded-2xl font-extrabold text-xs shadow-xs transition-all flex items-center justify-center gap-2 ${
                 isListening
                   ? "bg-amber-500 hover:bg-amber-600 text-white"
                   : "bg-teal-600 hover:bg-teal-700 text-white"
@@ -463,7 +766,7 @@ export default function InterviewSimulatorPage({
             >
               {isListening ? (
                 <>
-                  <MicOff className="size-4" /> Pause Speech Recording
+                  <MicOff className="size-4" /> Pause Recording
                 </>
               ) : (
                 <>
@@ -475,15 +778,15 @@ export default function InterviewSimulatorPage({
             <button
               onClick={handleSubmitAnswer}
               disabled={submittingAnswer || isHighNoise}
-              className="px-6 py-3.5 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-xs shadow-xs transition-all flex items-center gap-2 disabled:opacity-50"
+              className="w-full py-3.5 px-4 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-xs shadow-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {submittingAnswer ? (
                 <>
-                  <Loader2 className="size-4 animate-spin" /> Evaluating Answer...
+                  <Loader2 className="size-4 animate-spin" /> Evaluating...
                 </>
               ) : (
                 <>
-                  Submit Answer &amp; Next Question <ArrowRight className="size-4" />
+                  Submit Answer <ArrowRight className="size-4" />
                 </>
               )}
             </button>
@@ -491,11 +794,11 @@ export default function InterviewSimulatorPage({
             <button
               onClick={handleFinishInterview}
               disabled={endingInterview || submittingAnswer}
-              className="px-4 py-3.5 rounded-2xl bg-muted hover:bg-rose-500/10 text-muted-foreground hover:text-rose-600 border border-border text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-2"
+              className="w-full py-3.5 px-4 rounded-2xl bg-muted hover:bg-rose-500/10 text-muted-foreground hover:text-rose-600 border border-border text-xs font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {endingInterview ? (
                 <>
-                  <Loader2 className="size-4 animate-spin text-rose-500" /> Ending interview... Please wait
+                  <Loader2 className="size-4 animate-spin text-rose-500" /> Ending...
                 </>
               ) : (
                 "End Interview Early"
@@ -517,6 +820,36 @@ export default function InterviewSimulatorPage({
                   Gemini is evaluating your full spoken transcript, verifying technical depth, and finalizing your strict executive report...
                 </p>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* 1st Tab Switch Warning Modal Overlay */}
+        {showTabWarningModal && (
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <div className="p-8 rounded-3xl bg-card border-2 border-amber-500/40 shadow-2xl max-w-md w-full text-center space-y-5 animate-fade-in bg-gradient-to-b from-amber-500/10 via-card to-card">
+              <div className="size-16 rounded-2xl bg-amber-500/20 text-amber-500 border border-amber-500/30 flex items-center justify-center mx-auto shadow-inner animate-pulse">
+                <AlertTriangle className="size-8" />
+              </div>
+              <div className="space-y-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-amber-500 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
+                  Warning 1 of 2
+                </span>
+                <h3 className="font-display text-xl font-black text-foreground">
+                  TAB SWITCH DETECTED
+                </h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Navigating away or switching browser tabs is strictly monitored during AI interviews. You have <strong>1 remaining warning</strong>. A 2nd tab switch will immediately terminate your session!
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowTabWarningModal(false)}
+                className="w-full py-3.5 rounded-2xl font-extrabold text-xs bg-amber-500 hover:bg-amber-600 text-white shadow-lg transition-all cursor-pointer"
+              >
+                I Understand &amp; Resume Interview
+              </button>
             </div>
           </div>
         )}
@@ -551,15 +884,81 @@ export default function InterviewSimulatorPage({
               )}
             </div>
 
-            {/* Non-Surveillance Presence Metrics */}
-            <div className="grid grid-cols-2 gap-2 text-[11px] font-semibold pt-1">
-              <div className="p-2 rounded-xl bg-muted/60 border border-border/50 flex items-center justify-between">
-                <span>Face Visible</span>
-                <CheckCircle2 className="size-3.5 text-emerald-500" />
-              </div>
-              <div className="p-2 rounded-xl bg-muted/60 border border-border/50 flex items-center justify-between">
-                <span>Face Centered</span>
-                <CheckCircle2 className="size-3.5 text-emerald-500" />
+            {/* Dynamic Camera, Face & Eye Visibility Metrics */}
+            <div className="space-y-2 text-[11px] font-semibold pt-1">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2 rounded-xl bg-muted/60 border border-border/50 flex items-center justify-between">
+                  <span>Camera</span>
+                  {cameraMetrics.hasCameraPermission ? (
+                    <span className="text-emerald-500 font-bold flex items-center gap-1">
+                      <CheckCircle2 className="size-3.5" /> Connected
+                    </span>
+                  ) : (
+                    <span className="text-rose-500 font-bold flex items-center gap-1">
+                      <XCircle className="size-3.5" /> Error
+                    </span>
+                  )}
+                </div>
+
+                <div className="p-2 rounded-xl bg-muted/60 border border-border/50 flex items-center justify-between">
+                  <span>Face Presence</span>
+                  {cameraMetrics.status === "PRESENT" && (
+                    <span className="text-emerald-500 font-bold flex items-center gap-1">
+                      <CheckCircle2 className="size-3.5" /> Present
+                    </span>
+                  )}
+                  {cameraMetrics.status === "ABSENT" && (
+                    <span className="text-rose-500 font-bold flex items-center gap-1">
+                      <XCircle className="size-3.5" /> Not Detected
+                    </span>
+                  )}
+                  {cameraMetrics.status === "UNKNOWN" && (
+                    <span className="text-amber-500 font-bold flex items-center gap-1">
+                      <Loader2 className="size-3.5 animate-spin" /> Checking...
+                    </span>
+                  )}
+                </div>
+
+                <div className="p-2 rounded-xl bg-muted/60 border border-border/50 flex items-center justify-between">
+                  <span>Face Visibility</span>
+                  {cameraMetrics.faceVisibilityState === "GOOD" && (
+                    <span className="text-emerald-500 font-bold flex items-center gap-1">
+                      <CheckCircle2 className="size-3.5" /> Good
+                    </span>
+                  )}
+                  {cameraMetrics.faceVisibilityState === "PARTIAL" && (
+                    <span className="text-amber-500 font-bold flex items-center gap-1">
+                      <AlertTriangle className="size-3.5" /> Partial
+                    </span>
+                  )}
+                  {cameraMetrics.faceVisibilityState === "POOR" && (
+                    <span className="text-rose-500 font-bold flex items-center gap-1">
+                      <XCircle className="size-3.5" /> Poor
+                    </span>
+                  )}
+                  {cameraMetrics.faceVisibilityState === "UNKNOWN" && (
+                    <span className="text-muted-foreground font-bold flex items-center gap-1">
+                      Unknown
+                    </span>
+                  )}
+                </div>
+
+                <div className="p-2 rounded-xl bg-muted/60 border border-border/50 flex items-center justify-between">
+                  <span>Eyes</span>
+                  {cameraMetrics.bothEyesVisible ? (
+                    <span className="text-emerald-500 font-bold flex items-center gap-1">
+                      <CheckCircle2 className="size-3.5" /> Visible
+                    </span>
+                  ) : cameraMetrics.status === "PRESENT" ? (
+                    <span className="text-amber-500 font-bold flex items-center gap-1">
+                      <AlertTriangle className="size-3.5" /> Occluded
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground font-bold flex items-center gap-1">
+                      Unknown
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
