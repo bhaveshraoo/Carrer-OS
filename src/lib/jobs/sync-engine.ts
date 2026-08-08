@@ -1,6 +1,20 @@
-import { type SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getReal30IndianJobs } from "./real-jobs-aggregator";
-import { isJobActive, type JobWithCompany } from "./jobs";
+import { type JobWithCompany } from "./jobs";
+
+/**
+ * Gets an Admin Supabase Client using SUPABASE_SERVICE_ROLE_KEY if available
+ * to bypass RLS for inserting and deleting jobs across company career pages.
+ */
+function getAdminSupabaseClient(fallbackClient: SupabaseClient): SupabaseClient {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (url && serviceKey) {
+    return createClient(url, serviceKey);
+  }
+  return fallbackClient;
+}
 
 /**
  * Daily Sync Engine:
@@ -9,14 +23,15 @@ import { isJobActive, type JobWithCompany } from "./jobs";
  * 3. Syncs and upserts these 30 fresh jobs into Supabase companies & jobs tables.
  */
 export async function syncAndFetchSupabaseJobs(
-  supabase: SupabaseClient,
+  userClient: SupabaseClient,
   userId?: string
 ): Promise<JobWithCompany[]> {
+  const adminClient = getAdminSupabaseClient(userClient);
   const nowISO = new Date().toISOString();
 
   // 1. Wipe out expired jobs from Supabase database table
   try {
-    await (supabase as any).from("jobs").delete().lt("last_date", nowISO);
+    await adminClient.from("jobs").delete().lt("last_date", nowISO);
   } catch (err) {
     // Ignore if DB table or delete fails
   }
@@ -29,12 +44,12 @@ export async function syncAndFetchSupabaseJobs(
     console.error("Error fetching fresh jobs from APIs:", err);
   }
 
-  // 3. Sync & Upsert to Supabase DB table
+  // 3. Sync & Upsert to Supabase DB table with Service Role / Admin Client
   if (freshApiJobs.length > 0) {
     for (const job of freshApiJobs) {
       try {
         // Upsert company
-        const { data: comp } = await (supabase as any)
+        const { data: comp } = await adminClient
           .from("companies")
           .upsert(
             {
@@ -56,7 +71,7 @@ export async function syncAndFetchSupabaseJobs(
         const companyId = comp?.id || job.company_id;
 
         // Upsert job into Supabase
-        await (supabase as any).from("jobs").upsert(
+        await adminClient.from("jobs").upsert(
           {
             id: job.id,
             company_id: companyId,
@@ -70,7 +85,7 @@ export async function syncAndFetchSupabaseJobs(
             application_url: job.application_url,
             last_date: job.last_date,
             status: "active",
-            created_at: job.created_at || nowISO,
+            created_at: nowISO, // Always stamp with today's ISO date
           },
           { onConflict: "id" }
         );
@@ -87,8 +102,8 @@ export async function syncAndFetchSupabaseJobs(
   if (userId) {
     try {
       const [wishlistsRes, targetsRes] = await Promise.all([
-        (supabase as any).from("user_job_wishlist").select("job_id").eq("user_id", userId),
-        (supabase as any).from("user_target_companies").select("company_id").eq("user_id", userId),
+        userClient.from("user_job_wishlist").select("job_id").eq("user_id", userId),
+        userClient.from("user_target_companies").select("company_id").eq("user_id", userId),
       ]);
 
       if (wishlistsRes.data) {
@@ -104,7 +119,7 @@ export async function syncAndFetchSupabaseJobs(
 
   // 5. Query active non-expired jobs from Supabase
   try {
-    const { data: dbJobs, error } = await (supabase as any)
+    const { data: dbJobs, error } = await userClient
       .from("jobs")
       .select(`
         *,
@@ -147,9 +162,10 @@ export async function syncAndFetchSupabaseJobs(
     // Fallback to fresh API jobs directly
   }
 
-  // Fallback to fresh API jobs if DB query yields 0
+  // Fallback to fresh API jobs directly if DB query yields 0
   return freshApiJobs.map((j) => ({
     ...j,
+    created_at: nowISO,
     is_wishlisted: wishlistedJobIds.has(j.id),
     is_company_targeted: targetedCompanyIds.has(j.company_id),
   }));
