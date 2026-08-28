@@ -43,6 +43,11 @@ export default function SignupPage() {
   const [pwEmail, setPwEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  // OTP Verification States
+  const [otpCode, setOtpCode] = useState(["", "", "", "", "", ""]);
+  const [otpSubmitting, setOtpSubmitting] = useState(false);
+  const [otpError, setOtpError] = useState("");
+
   async function handleOtp(e: React.FormEvent) {
     e.preventDefault();
     setStatus("submitting");
@@ -60,6 +65,79 @@ export default function SignupPage() {
       return;
     }
     setStatus("sent");
+  }
+
+  async function handleVerifyOtpCode(e: React.FormEvent) {
+    e.preventDefault();
+    const fullCode = otpCode.join("");
+    if (fullCode.length < 6) {
+      setOtpError("Please enter all 6 digits of the OTP code.");
+      return;
+    }
+
+    setOtpSubmitting(true);
+    setOtpError("");
+
+    const supabase = createClient();
+    const targetEmail = mode === "quick" ? email : pwEmail;
+
+    // Try verification as signup OTP first
+    let { data, error } = await supabase.auth.verifyOtp({
+      email: targetEmail,
+      token: fullCode,
+      type: "signup",
+    });
+
+    if (error) {
+      // Fallback try as email/magiclink OTP
+      const { data: eData, error: eErr } = await supabase.auth.verifyOtp({
+        email: targetEmail,
+        token: fullCode,
+        type: "email",
+      });
+      data = eData;
+      error = eErr;
+    }
+
+    setOtpSubmitting(false);
+
+    if (error) {
+      setOtpError(error.message || "Invalid or expired OTP code. Please try again.");
+      return;
+    }
+
+    router.push("/dashboard");
+    router.refresh();
+  }
+
+  function handleOtpDigitChange(index: number, val: string) {
+    if (!/^\d*$/.test(val)) return;
+    const newOtp = [...otpCode];
+    newOtp[index] = val.slice(-1);
+    setOtpCode(newOtp);
+
+    if (val && index < 5) {
+      const nextInput = document.getElementById(`signup-otp-input-${index + 1}`);
+      nextInput?.focus();
+    }
+  }
+
+  function handleOtpKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Backspace" && !otpCode[index] && index > 0) {
+      const prevInput = document.getElementById(`signup-otp-input-${index - 1}`);
+      prevInput?.focus();
+    }
+  }
+
+  function handleOtpPaste(e: React.ClipboardEvent) {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text").trim();
+    if (/^\d{6}$/.test(pasted)) {
+      const digits = pasted.split("");
+      setOtpCode(digits);
+      const lastInput = document.getElementById("signup-otp-input-5");
+      lastInput?.focus();
+    }
   }
 
   async function handleGoogle() {
@@ -104,24 +182,87 @@ export default function SignupPage() {
   }
 
   if (status === "sent") {
+    const activeEmail = mode === "quick" ? email : pwEmail;
     return (
       <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden" style={{ background: "var(--bg-base)" }}>
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-96 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="surface border border-border rounded-3xl p-8 max-w-sm w-full text-center space-y-4 shadow-2xl relative z-10 animate-fade-up">
-          <div className="size-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mx-auto shadow-inner">
-            <CheckCircle2 className="size-8" />
+        <div className="surface border border-border rounded-3xl p-8 max-w-md w-full text-center space-y-6 shadow-2xl relative z-10 animate-fade-up">
+          <div className="size-16 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-500 mx-auto shadow-inner">
+            <KeyRound className="size-8" />
           </div>
-          <h2 className="font-display text-xl font-bold text-primary">Check your email</h2>
-          <p className="text-xs text-secondary leading-relaxed">
-            We sent a confirmation link to <span className="font-semibold text-primary">{mode === "quick" ? email : pwEmail}</span>. Click it to activate your account.
-          </p>
-          <button
-            onClick={() => setStatus("idle")}
-            className="text-xs font-bold text-orange-400 hover:text-orange-300 transition-colors pt-2"
-          >
-            ← Back to sign up
-          </button>
+
+          <div className="space-y-1.5">
+            <h2 className="font-display text-xl font-bold text-primary">Enter Verification Code</h2>
+            <p className="text-xs text-secondary leading-relaxed">
+              We sent a 6-digit OTP code & confirmation link to <br />
+              <span className="font-semibold text-primary">{activeEmail}</span>
+            </p>
+          </div>
+
+          {/* 6-DIGIT OTP INPUT FORM */}
+          <form onSubmit={handleVerifyOtpCode} className="space-y-5">
+            <div className="flex items-center justify-center gap-2" onPaste={handleOtpPaste}>
+              {otpCode.map((digit, idx) => (
+                <input
+                  key={idx}
+                  id={`signup-otp-input-${idx}`}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleOtpDigitChange(idx, e.target.value)}
+                  onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                  className="size-12 surface-2 border border-border focus:border-orange-500 text-center font-mono font-extrabold text-lg rounded-xl text-primary outline-none transition-all shadow-xs focus:ring-2 focus:ring-orange-500/20"
+                />
+              ))}
+            </div>
+
+            {otpError && (
+              <p className="text-xs font-semibold text-rose-500 bg-rose-500/10 p-3 rounded-xl border border-rose-500/20">
+                {otpError}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={otpSubmitting || otpCode.join("").length < 6}
+              className="w-full bg-orange-500 hover:brightness-110 disabled:opacity-50 text-white font-extrabold py-3.5 rounded-2xl shadow-lg shadow-orange-500/25 transition-all text-xs flex items-center justify-center gap-2"
+            >
+              {otpSubmitting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <>
+                  <CheckCircle2 className="size-4" /> Verify &amp; Activate Account
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="pt-3 border-t border-border flex items-center justify-between text-xs text-secondary">
+            <button
+              type="button"
+              onClick={(e) => {
+                setOtpCode(["", "", "", "", "", ""]);
+                if (mode === "quick") handleOtp(e);
+                else handlePasswordSignup(e);
+              }}
+              className="font-semibold text-orange-500 hover:underline"
+            >
+              Resend OTP Code
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setStatus("idle");
+                setOtpCode(["", "", "", "", "", ""]);
+              }}
+              className="font-semibold text-secondary hover:text-primary transition-colors"
+            >
+              ← Back to Sign Up
+            </button>
+          </div>
         </div>
       </div>
     );
