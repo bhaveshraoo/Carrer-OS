@@ -284,7 +284,7 @@ export function useCameraPresence(onFrameSample?: (data: VisionFrameData) => voi
               rightEyeState = "UNKNOWN";
             }
 
-            setMetrics({
+            const newMetrics: CameraPresenceMetrics = {
               status: currentStatus,
               faceVisible: isFacePresent,
               faceCentered: isFacePresent && !headTilted,
@@ -309,6 +309,23 @@ export function useCameraPresence(onFrameSample?: (data: VisionFrameData) => voi
               rightEyeScore: Number(rightEyeScore.toFixed(2)),
               bothEyesVisible,
               headTilted,
+            };
+
+            setMetrics((prev) => {
+              // Avoid unnecessary React component re-renders unless key UI metrics change
+              if (
+                prev.status === newMetrics.status &&
+                prev.faceVisibilityState === newMetrics.faceVisibilityState &&
+                prev.leftEyeState === newMetrics.leftEyeState &&
+                prev.rightEyeState === newMetrics.rightEyeState &&
+                prev.bothEyesVisible === newMetrics.bothEyesVisible &&
+                prev.hasCameraPermission === newMetrics.hasCameraPermission &&
+                prev.lightingQuality === newMetrics.lightingQuality &&
+                prev.headTilted === newMetrics.headTilted
+              ) {
+                return prev;
+              }
+              return newMetrics;
             });
 
             if (onFrameSample) {
