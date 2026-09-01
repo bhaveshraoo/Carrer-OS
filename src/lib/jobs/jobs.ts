@@ -24,13 +24,25 @@ export interface JobWithCompany {
 }
 
 /**
- * Check if a job is still active (last_date is today or in the future)
+ * Check if a job is still active (apply deadline last_date is today or in the future).
+ * If the current date passes the apply deadline, returns false to remove the job from user view.
  */
 export function isJobActive(lastDateStr: string): boolean {
-  if (!lastDateStr) return true;
-  const lastTime = new Date(lastDateStr).getTime();
-  // Active if deadline is valid or set in the future / recent
-  return isNaN(lastTime) || lastTime >= Date.now() - 24 * 60 * 60 * 1000;
+  if (!lastDateStr) return false;
+  const trimmed = lastDateStr.trim();
+  const lastTime = new Date(trimmed).getTime();
+  if (isNaN(lastTime)) return false;
+
+  // If lastDateStr is YYYY-MM-DD format without time, set to end-of-day (23:59:59.999)
+  let deadlineMs = lastTime;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const endOfDay = new Date(trimmed);
+    endOfDay.setHours(23, 59, 59, 999);
+    deadlineMs = endOfDay.getTime();
+  }
+
+  // Strictly active ONLY if current date/time has NOT passed the apply deadline
+  return deadlineMs >= Date.now();
 }
 
 export const FALLBACK_JOBS: JobWithCompany[] = [

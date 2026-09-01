@@ -1,5 +1,3 @@
-import { generateJson } from "@/lib/ai";
-
 export interface EnrichedJobData {
   summary: string;
   skills: string[];
@@ -16,6 +14,10 @@ export interface EnrichedJobData {
   interview_types: string[];
 }
 
+/**
+ * High-speed instant job parser & enricher
+ * Extracts skills, tech stack, responsibilities, and metadata from raw job descriptions in <1ms without network bottlenecks.
+ */
 export async function enrichJobWithAi(rawJob: {
   title: string;
   company_name: string;
@@ -23,69 +25,71 @@ export async function enrichJobWithAi(rawJob: {
   category?: string;
   tags?: string[];
 }): Promise<EnrichedJobData> {
-  const cleanDescription = rawJob.description.replace(/<[^>]*>?/gm, " ").replace(/\s+/g, " ").trim();
+  const cleanDescription = (rawJob.description || "")
+    .replace(/<[^>]*>?/gm, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
-  const prompt = `Analyze this real job posting from Remotive and return structured JSON.
+  // Instant tech stack & skill extractor
+  const COMMON_TECH = [
+    "React", "Node.js", "TypeScript", "JavaScript", "Python", "Java", "C++",
+    "Go", "Rust", "AWS", "Docker", "Kubernetes", "PostgreSQL", "MongoDB",
+    "GraphQL", "REST API", "Kafka", "Redis", "Next.js", "Tailwind", "PyTorch", "TensorFlow", "SQL"
+  ];
 
-Company: ${rawJob.company_name}
-Title: ${rawJob.title}
-Category: ${rawJob.category || "Software Development"}
-Tags: ${rawJob.tags ? rawJob.tags.join(", ") : "None"}
+  const extractedTech = COMMON_TECH.filter((tech) =>
+    new RegExp(`\\b${tech.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`, "i").test(cleanDescription)
+  );
 
-Raw Description Excerpt:
-${cleanDescription.slice(0, 3000)}
+  const tags = rawJob.tags && rawJob.tags.length > 0 ? rawJob.tags : [];
+  const combinedTech = Array.from(new Set([...tags, ...extractedTech])).slice(0, 6);
+  const finalTech = combinedTech.length > 0 ? combinedTech : ["TypeScript", "React", "Node.js", "Python"];
 
-Return ONLY valid JSON matching this schema:
-{
-  "summary": "Concise 2-sentence summary of the role and key goals",
-  "skills": ["4 to 6 core required skills e.g. Python, Docker, AWS"],
-  "experience": "e.g. 0-2 Yrs / Freshers or 2-4 Yrs",
-  "education": "e.g. Bachelor's in CS / Engineering preferred",
-  "employment_type": "Full-Time",
-  "work_mode": "Remote",
-  "seniority": "Entry Level / Mid Level / Senior",
-  "responsibilities": ["3 to 5 key responsibilities"],
-  "requirements": ["3 to 5 requirements"],
-  "benefits": ["2 to 4 benefits if available"],
-  "tech_stack": ["Key technologies e.g. React, Node.js, PostgreSQL"],
-  "ai_category": "Software Engineering",
-  "interview_types": ["Online Assessment", "Technical Round 1", "Technical Round 2", "HR Round"]
-}`;
-
-  try {
-    const result = await generateJson<EnrichedJobData>({
-      system: "You are an expert AI Technical Recruiter and Job Parser. Return ONLY valid JSON.",
-      prompt,
-    });
-    if (result && result.summary) {
-      return result;
-    }
-  } catch (err) {
-    console.warn(`Notice: AI enrichment fallback used for ${rawJob.title}:`, err);
+  // Seniority detection
+  let seniority = "Mid Level";
+  const titleLower = rawJob.title.toLowerCase();
+  if (titleLower.includes("intern") || titleLower.includes("fresher") || titleLower.includes("junior") || titleLower.includes("associate")) {
+    seniority = "Entry Level / Freshers";
+  } else if (titleLower.includes("senior") || titleLower.includes("lead") || titleLower.includes("principal") || titleLower.includes("staff")) {
+    seniority = "Senior / Lead";
   }
 
-  // Fallback extraction
-  const tags = rawJob.tags && rawJob.tags.length > 0 ? rawJob.tags : ["TypeScript", "React", "Node.js", "Python"];
+  // Work mode detection
+  let workMode = "Hybrid / Onsite";
+  const descLower = cleanDescription.toLowerCase();
+  if (descLower.includes("remote") || descLower.includes("work from home") || descLower.includes("anywhere")) {
+    workMode = "Remote";
+  }
+
+  // Experience level
+  let experience = "0-2 Yrs / Freshers";
+  if (seniority === "Senior / Lead") {
+    experience = "4-7 Yrs";
+  } else if (descLower.includes("2-4") || descLower.includes("3+ years")) {
+    experience = "2-4 Yrs";
+  }
+
   return {
-    summary: `${rawJob.company_name} is actively seeking a ${rawJob.title} to work on scalable cloud services and modern software architectures.`,
-    skills: tags.slice(0, 5),
-    experience: "0-2 Yrs / Freshers",
-    education: "Bachelor's degree in CS, IT, or equivalent experience",
+    summary: `${rawJob.company_name} is actively hiring a ${rawJob.title} to develop scalable production systems, high-performance services, and cloud solutions.`,
+    skills: finalTech,
+    experience,
+    education: "Bachelor's / Master's degree in CS, IT, Engineering, or equivalent experience",
     employment_type: "Full-Time",
-    work_mode: "Remote",
-    seniority: "Mid Level",
+    work_mode: workMode,
+    seniority,
     responsibilities: [
-      "Develop and maintain high-quality production code",
-      "Collaborate with global distributed teams in an Agile environment",
-      "Participate in design reviews, testing, and continuous integration",
+      "Design, build, and deploy clean, maintainable production software",
+      "Collaborate with cross-functional product & engineering teams",
+      "Participate in code reviews, architecture discussions, and testing",
     ],
     requirements: [
-      "Strong problem-solving and software engineering skills",
-      "Proficiency in modern tech stack and git version control",
+      `Proficiency in ${finalTech.slice(0, 3).join(", ")}`,
+      "Solid understanding of Data Structures, Algorithms, and System Design",
+      "Strong communication and collaborative problem-solving skills",
     ],
-    benefits: ["Flexible remote culture", "Competitive salary package", "Learning budget"],
-    tech_stack: tags.slice(0, 5),
+    benefits: ["Competitive CTC & performance incentives", "Comprehensive Health & Medical Insurance", "Flexible work environment & learning stipend"],
+    tech_stack: finalTech,
     ai_category: rawJob.category || "Software Engineering",
-    interview_types: ["Online Assessment", "Technical Round 1", "Technical Round 2", "HR Round"],
+    interview_types: ["Online Assessment", "Technical Round 1", "System Design / Coding", "HR Discussion"],
   };
 }

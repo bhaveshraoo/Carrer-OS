@@ -17,10 +17,10 @@ function getAdminSupabaseClient(fallbackClient: SupabaseClient): SupabaseClient 
 }
 
 /**
- * Daily Sync Engine:
- * 1. Automatically deletes/wipes out expired jobs (last_date < NOW()) from Supabase.
- * 2. Fetches 30 fresh real Indian jobs from Lever, Greenhouse, and Remotive APIs.
- * 3. Syncs and upserts these 30 fresh jobs into Supabase companies & jobs tables.
+ * Fast Job Fetch & Background Sync Engine:
+ * 1. Parallel fetches wishlists, target companies, and active jobs from Supabase DB.
+ * 2. If DB is empty, loads live aggregated jobs and asynchronously seeds DB in background batch (0ms blocking delay).
+ * 3. Correctly matches `job_wishlists` and `user_company_targets` table names.
  */
 export async function syncAndFetchSupabaseJobs(
   userClient: SupabaseClient,
@@ -29,81 +29,15 @@ export async function syncAndFetchSupabaseJobs(
   const adminClient = getAdminSupabaseClient(userClient);
   const nowISO = new Date().toISOString();
 
-  // 1. Wipe out expired jobs from Supabase database table
-  try {
-    await adminClient.from("jobs").delete().lt("last_date", nowISO);
-  } catch (err) {
-    // Ignore if DB table or delete fails
-  }
-
-  // 2. Fetch 30 fresh live jobs (10 Lever + 10 Greenhouse + 10 Remotive)
-  let freshApiJobs: JobWithCompany[] = [];
-  try {
-    freshApiJobs = await getReal30IndianJobs();
-  } catch (err) {
-    console.error("Error fetching fresh jobs from APIs:", err);
-  }
-
-  // 3. Sync & Upsert to Supabase DB table with Service Role / Admin Client
-  if (freshApiJobs.length > 0) {
-    for (const job of freshApiJobs) {
-      try {
-        // Upsert company
-        const { data: comp } = await adminClient
-          .from("companies")
-          .upsert(
-            {
-              name: job.company_name,
-              slug: job.company_slug,
-              logo_url: job.company_logo_url,
-              metadata: {
-                tier: job.company_tier,
-                location: job.location,
-                verified: true,
-                auto_ingested: true,
-              },
-            },
-            { onConflict: "slug" }
-          )
-          .select("id")
-          .single();
-
-        const companyId = comp?.id || job.company_id;
-
-        // Upsert job into Supabase
-        await adminClient.from("jobs").upsert(
-          {
-            id: job.id,
-            company_id: companyId,
-            role: job.role,
-            description: job.description,
-            domain: job.domain,
-            location: job.location,
-            ctc_range: job.ctc_range,
-            tech_stack: job.tech_stack,
-            interview_types: job.interview_types,
-            application_url: job.application_url,
-            last_date: job.last_date,
-            status: "active",
-            created_at: nowISO, // Always stamp with today's ISO date
-          },
-          { onConflict: "id" }
-        );
-      } catch (err) {
-        // Continue loop if single item fails
-      }
-    }
-  }
-
-  // 4. Fetch user wishlists & targeted company IDs
+  // 1. Fetch user wishlists & targeted company IDs in parallel with active jobs
   let wishlistedJobIds = new Set<string>();
   let targetedCompanyIds = new Set<string>();
 
   if (userId) {
     try {
       const [wishlistsRes, targetsRes] = await Promise.all([
-        userClient.from("user_job_wishlist").select("job_id").eq("user_id", userId),
-        userClient.from("user_target_companies").select("company_id").eq("user_id", userId),
+        userClient.from("job_wishlists").select("job_id").eq("user_id", userId),
+        userClient.from("user_company_targets").select("company_id").eq("user_id", userId),
       ]);
 
       if (wishlistsRes.data) {
@@ -113,11 +47,11 @@ export async function syncAndFetchSupabaseJobs(
         targetedCompanyIds = new Set(targetsRes.data.map((t: any) => t.company_id));
       }
     } catch {
-      // Silent
+      // Ignore if table queries fail
     }
   }
 
-  // 5. Query active non-expired jobs from Supabase
+  // 2. Query active non-expired jobs from Supabase DB
   try {
     const { data: dbJobs, error } = await userClient
       .from("jobs")
@@ -159,10 +93,53 @@ export async function syncAndFetchSupabaseJobs(
       });
     }
   } catch (err) {
-    // Fallback to fresh API jobs directly
+    // Fallback below
   }
 
-  // Fallback to fresh API jobs directly if DB query yields 0
+  // 3. Fallback to 30 Live Aggregated Jobs (Lever + Greenhouse + Remotive)
+  const freshApiJobs = await getReal30IndianJobs();
+
+  // Asynchronously seed/upsert jobs to Supabase DB in background batch without blocking client request
+  if (freshApiJobs.length > 0) {
+    (async () => {
+      try {
+        const companyBatch = freshApiJobs.map((job) => ({
+          name: job.company_name,
+          slug: job.company_slug,
+          logo_url: job.company_logo_url,
+          metadata: {
+            tier: job.company_tier,
+            location: job.location,
+            verified: true,
+            auto_ingested: true,
+          },
+        }));
+
+        await adminClient.from("companies").upsert(companyBatch, { onConflict: "slug" });
+
+        const jobBatch = freshApiJobs.map((job) => ({
+          id: job.id,
+          company_id: job.company_id,
+          role: job.role,
+          description: job.description,
+          domain: job.domain,
+          location: job.location,
+          ctc_range: job.ctc_range,
+          tech_stack: job.tech_stack,
+          interview_types: job.interview_types,
+          application_url: job.application_url,
+          last_date: job.last_date,
+          status: "active",
+          created_at: nowISO,
+        }));
+
+        await adminClient.from("jobs").upsert(jobBatch, { onConflict: "id" });
+      } catch (err) {
+        // Background sync catch
+      }
+    })();
+  }
+
   return freshApiJobs.map((j) => ({
     ...j,
     created_at: nowISO,

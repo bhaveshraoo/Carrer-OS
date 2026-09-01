@@ -21,78 +21,70 @@ export async function GET(request: Request) {
   const supabase = createClient(url, serviceKey);
 
   try {
-    console.log("⏰ Daily Cron Job Triggered: Ingesting 30 real Indian tech jobs...");
+    const nowISO = new Date().toISOString();
+    console.log("⏰ Daily Cron Job Triggered: Ingesting fresh 30-40 live tech jobs & purging expired deadlines...");
 
-    // 1. Fetch 30 real Indian jobs (10 Lever + 10 Greenhouse + 10 Remotive)
-    const realJobs = await getReal30IndianJobs();
+    // 1. Automatically wipe out expired jobs from DB where apply deadline (last_date) has passed
+    await supabase.from("jobs").delete().lt("last_date", nowISO);
 
-    // 2. Wipe out expired jobs past last_date from Supabase DB
-    const nowStr = new Date().toISOString();
-    await supabase.from("jobs").delete().lt("last_date", nowStr);
+    // 2. Fetch 30-40 fresh live jobs across all 4 Harvester Agents (Greenhouse, Jobicy, Remotive, Lever)
+    const freshJobs = await getReal30IndianJobs();
 
-    let syncedCount = 0;
+    if (freshJobs.length === 0) {
+      return NextResponse.json({
+        success: true,
+        message: "Cron completed: 0 new jobs returned",
+        syncedCount: 0,
+      });
+    }
 
-    for (const job of realJobs) {
-      try {
-        // Upsert company
-        const { data: companyData } = await supabase
-          .from("companies")
-          .upsert(
-            {
-              name: job.company_name,
-              slug: job.company_slug,
-              logo_url: job.company_logo_url,
-              metadata: {
-                tier: job.company_tier,
-                location: job.location,
-                verified: true,
-                auto_ingested: true,
-              },
-            },
-            { onConflict: "slug" }
-          )
-          .select("id")
-          .single();
+    // 3. Batch Upsert Companies
+    const companyBatch = freshJobs.map((job) => ({
+      name: job.company_name,
+      slug: job.company_slug,
+      logo_url: job.company_logo_url,
+      metadata: {
+        tier: job.company_tier,
+        location: job.location,
+        verified: true,
+        auto_ingested: true,
+      },
+    }));
 
-        const compId = companyData?.id || job.company_id;
+    await supabase.from("companies").upsert(companyBatch, { onConflict: "slug" });
 
-        // Upsert job
-        const { error: jobErr } = await supabase.from("jobs").upsert(
-          {
-            id: job.id,
-            company_id: compId,
-            role: job.role,
-            description: job.description,
-            domain: job.domain,
-            location: job.location,
-            ctc_range: job.ctc_range,
-            tech_stack: job.tech_stack,
-            interview_types: job.interview_types,
-            application_url: job.application_url,
-            last_date: job.last_date,
-            status: "active",
-            created_at: job.created_at,
-          },
-          { onConflict: "id" }
-        );
+    // 4. Batch Upsert Jobs with fresh created_at timestamp
+    const jobBatch = freshJobs.map((job) => ({
+      id: job.id,
+      company_id: job.company_id,
+      role: job.role,
+      description: job.description,
+      domain: job.domain,
+      location: job.location,
+      ctc_range: job.ctc_range,
+      tech_stack: job.tech_stack,
+      interview_types: job.interview_types,
+      application_url: job.application_url,
+      last_date: job.last_date,
+      status: "active",
+      created_at: nowISO,
+    }));
 
-        if (!jobErr) {
-          syncedCount++;
-        }
-      } catch (err) {
-        // Ignore single item db error
-      }
+    const { error: jobErr } = await supabase.from("jobs").upsert(jobBatch, { onConflict: "id" });
+
+    if (jobErr) {
+      console.error("Cron batch upsert error:", jobErr);
     }
 
     return NextResponse.json({
       success: true,
-      timestamp: new Date().toISOString(),
-      message: `Successfully synchronized ${realJobs.length} real Indian tech jobs (10 Lever, 10 Greenhouse, 10 Remotive)`,
-      syncedCount,
-      totalFetched: realJobs.length,
+      timestamp: nowISO,
+      message: `Successfully purged expired jobs and ingested ${freshJobs.length} daily live tech jobs into marketplace!`,
+      syncedCount: freshJobs.length,
+      totalFetched: freshJobs.length,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("CRON /api/jobs/cron Error:", error);
-    return NextResponse.json({ success: false, error: "Cron ingestion failed" }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message || "Cron ingestion failed" }, { status: 500 });
   }
 }

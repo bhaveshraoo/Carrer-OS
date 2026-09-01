@@ -19,27 +19,31 @@ export interface LeverPostingRaw {
 }
 
 const LEVER_INDIA_COMPANIES = [
-  { slug: "meesho", name: "Meesho", tier: "Product Tier 1" },
-  { slug: "groww", name: "Groww", tier: "Product Tier 1" },
-  { slug: "clevertap", name: "CleverTap", tier: "Product Tier 1" },
-  { slug: "postman", name: "Postman", tier: "Product Tier 1" },
-  { slug: "inmobi", name: "InMobi", tier: "Product Tier 1" },
+  { slug: "razorpay", name: "Razorpay", tier: "Fintech Tier 1" },
+  { slug: "postman", name: "Postman", tier: "Developer Tools" },
+  { slug: "groww", name: "Groww", tier: "Fintech Tier 1" },
+  { slug: "clevertap", name: "CleverTap", tier: "SaaS / Product" },
+  { slug: "meesho", name: "Meesho", tier: "E-Commerce" },
+  { slug: "swiggy", name: "Swiggy", tier: "Consumer Tech" },
+  { slug: "inmobi", name: "InMobi", tier: "AdTech Tier 1" },
   { slug: "smallcase", name: "smallcase", tier: "Fintech" },
-  { slug: "juspay", name: "Juspay", tier: "Fintech" },
+  { slug: "juspay", name: "Juspay", tier: "Fintech / Payments" },
   { slug: "urbancompany", name: "Urban Company", tier: "Consumer Tech" },
   { slug: "slice", name: "Slice", tier: "Fintech" },
-  { slug: "zepto", name: "Zepto", tier: "Consumer Tech" },
+  { slug: "zepto", name: "Zepto", tier: "Quick Commerce" },
 ];
 
 export async function fetchAndEnrichLeverJobs(limit = 15): Promise<JobWithCompany[]> {
-  const indianJobs: JobWithCompany[] = [];
+  const companyJobsMap: Map<string, JobWithCompany[]> = new Map();
 
   for (const comp of LEVER_INDIA_COMPANIES) {
-    if (indianJobs.length >= limit) break;
-
     try {
       const res = await fetch(`https://api.lever.co/v0/postings/${comp.slug}?mode=json`, {
-        headers: { "User-Agent": "CareerOS-Lever-Aggregator/1.0" },
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Accept": "application/json, text/plain, */*",
+        },
+        signal: AbortSignal.timeout(4000),
         next: { revalidate: 3600 },
       });
 
@@ -47,15 +51,16 @@ export async function fetchAndEnrichLeverJobs(limit = 15): Promise<JobWithCompan
       const postings: LeverPostingRaw[] = await res.json();
       if (!Array.isArray(postings)) continue;
 
-      for (const p of postings) {
-        if (indianJobs.length >= limit) break;
+      const compJobs: JobWithCompany[] = [];
 
-        const location = p.categories?.location || "";
+      for (const p of postings) {
+        if (compJobs.length >= 3) break;
+
+        const location = p.categories?.location || "India (Remote / Hybrid)";
         if (!isIndianLocation(location)) continue;
 
         const rawDescription = p.descriptionPlain || p.description || p.text;
 
-        // Run AI enrichment on description
         const aiData = await enrichJobWithAi({
           title: p.text,
           company_name: comp.name,
@@ -88,7 +93,7 @@ ${aiData.benefits.map((b) => `• ${b}`).join("\n")}`;
         const createdDate = p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString();
         const lastDate = new Date(Date.now() + 30 * 86400000).toISOString();
 
-        indianJobs.push({
+        compJobs.push({
           id: `lever-${p.id}`,
           company_id: `comp-${comp.slug}`,
           company_name: comp.name,
@@ -99,19 +104,38 @@ ${aiData.benefits.map((b) => `• ${b}`).join("\n")}`;
           description: formattedDescription,
           domain: aiData.ai_category || "Software Engineering",
           location: location.trim(),
-          ctc_range: "₹18L - ₹28L PA",
+          ctc_range: "₹18L - ₹32L PA",
           tech_stack: aiData.tech_stack,
           interview_types: aiData.interview_types,
-          application_url: p.applyUrl || p.hostedUrl,
+          application_url: p.hostedUrl || p.applyUrl || `https://jobs.lever.co/${comp.slug}/${p.id}`,
           last_date: lastDate,
           status: "active",
           created_at: createdDate,
         });
       }
-    } catch (err) {
-      console.warn(`Notice fetching Lever company ${comp.name}:`, err);
+
+      if (compJobs.length > 0) {
+        companyJobsMap.set(comp.slug, compJobs);
+      }
+    } catch {
+      // Continue next company
     }
   }
 
-  return indianJobs.slice(0, limit);
+  const result: JobWithCompany[] = [];
+  let addedAny = true;
+  let roundIndex = 0;
+
+  while (result.length < limit && addedAny) {
+    addedAny = false;
+    for (const [_, jobsList] of companyJobsMap) {
+      if (roundIndex < jobsList.length && result.length < limit) {
+        result.push(jobsList[roundIndex]);
+        addedAny = true;
+      }
+    }
+    roundIndex++;
+  }
+
+  return result;
 }

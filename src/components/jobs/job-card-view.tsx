@@ -181,11 +181,18 @@ export function JobCardView({ jobs, onTargetCompanyToggle }: JobCardViewProps) {
             const logoUrl = getCompanyLogoUrl(job.company_name, job.company_slug, job.company_logo_url);
             const initialLetter = job.company_name.charAt(0).toUpperCase();
 
-            // Extract short 2-sentence summary
-            const summaryExcerpt = job.description
+            // Filter tech stack to only include real technical coding skills
+            const codingTechStack = (job.tech_stack || []).filter(
+              (tech) => !/full[- ]time|part[- ]time|employee|internship|contract|remote/i.test(tech)
+            );
+            const displayStack = codingTechStack.length > 0 ? codingTechStack : ["TypeScript", "React"];
+
+            // Extract short summary & fix "a/an" grammar before vowel titles
+            const rawSummary = job.description
               .replace(/📌 JOB OVERVIEW|🎯 ELIGIBILITY.*|🚀 KEY RESPONSIBILITIES.*/g, "")
               .trim()
               .slice(0, 110);
+            const summaryExcerpt = rawSummary.replace(/\ba ([aeiouAEIOU])/g, "an $1");
 
             return (
               <div
@@ -215,7 +222,7 @@ export function JobCardView({ jobs, onTargetCompanyToggle }: JobCardViewProps) {
                   {/* Abstract Code Graphic Watermark in Banner */}
                   <div className="z-10 text-white/30 font-mono text-[10px] space-y-0.5 pointer-events-none select-none">
                     <p className="line-clamp-1">{`// ${job.company_name} Hiring Drive`}</p>
-                    <p className="line-clamp-1">{`const stack = ["${job.tech_stack.slice(0, 2).join('", "')}"]`}</p>
+                    <p className="line-clamp-1">{`const stack = ["${displayStack.slice(0, 2).join('", "')}"]`}</p>
                   </div>
                 </div>
 
