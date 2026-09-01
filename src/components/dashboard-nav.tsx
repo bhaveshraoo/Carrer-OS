@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -56,6 +57,17 @@ export function DashboardNav({
 }) {
   const pathname = usePathname();
   const router   = useRouter();
+
+  // Background Prefetcher: Automatically warm up /api/jobs & company routes in background
+  // while candidate is on Dashboard, so when Job Portal is clicked, jobs load instantly with 0ms delay!
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // Warm up API cache
+      fetch("/api/jobs", { cache: "force-cache" }).catch(() => {});
+      // Prefetch Next.js page route
+      router.prefetch("/dashboard/jobs");
+    }
+  }, [router]);
 
   async function handleLogout() {
     const supabase = createClient();
