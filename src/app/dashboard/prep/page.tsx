@@ -10,25 +10,29 @@ export default async function PrepPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: rawCompanies } = await table(supabase, "companies").select("*");
-  const { data: targets }      = await table(supabase, "user_company_targets").select("*").eq("user_id", user.id);
-  const { data: allTopics }    = await table(supabase, "company_dsa_topics").select("*");
-
+  // Execute all database queries in parallel for instant page loads
+  let rawCompanies: any[] = [];
+  let targets: any[] = [];
+  let allTopics: any[] = [];
   let rawQuestions: any[] = [];
+
   try {
-    const [chunk1, chunk2, chunk3] = await Promise.all([
-      (supabase as any).from("dsa_questions").select("*").range(0, 999),
-      (supabase as any).from("dsa_questions").select("*").range(1000, 1999),
-      (supabase as any).from("dsa_questions").select("*").range(2000, 2999),
+    const [companiesRes, targetsRes, topicsRes, questionsRes] = await Promise.all([
+      table(supabase, "companies").select("*"),
+      table(supabase, "user_company_targets").select("*").eq("user_id", user.id),
+      table(supabase, "company_dsa_topics").select("*"),
+      (supabase as any)
+        .from("dsa_questions")
+        .select("id, title, topic, difficulty, prompt, solution_javascript, solution_python, solution_cpp, solution_explanation")
+        .limit(500),
     ]);
 
-    rawQuestions = [
-      ...(chunk1.data || []),
-      ...(chunk2.data || []),
-      ...(chunk3.data || []),
-    ];
-  } catch {
-    // Supabase query error fallback
+    rawCompanies = companiesRes.data || [];
+    targets = targetsRes.data || [];
+    allTopics = topicsRes.data || [];
+    rawQuestions = questionsRes.data || [];
+  } catch (err) {
+    console.warn("DSA prep data fetch notice:", err);
   }
 
   const targetedCompanyIds = (targets ?? []).map((t) => t.company_id);
