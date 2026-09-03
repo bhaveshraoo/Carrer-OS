@@ -107,6 +107,9 @@ export async function syncAndFetchSupabaseJobs(
   if (freshApiJobs.length > 0) {
     (async () => {
       try {
+        // Purge legacy numeric fallback IDs 1..35 from DB
+        const legacyIds = Array.from({ length: 35 }, (_, i) => String(i + 1));
+        await adminClient.from("jobs").delete().in("id", legacyIds);
         const companyBatch = freshApiJobs.map((job) => ({
           name: job.company_name,
           slug: job.company_slug,
