@@ -25,8 +25,8 @@ export async function fetchAndEnrichRemotiveJobs(limit = 15): Promise<JobWithCom
         "Accept": "application/json, text/plain, */*",
         "Accept-Language": "en-US,en;q=0.9",
       },
-      signal: AbortSignal.timeout(5000),
-      next: { revalidate: 3600 },
+      signal: AbortSignal.timeout(3000),
+      cache: "no-store",
     });
 
     if (!res.ok) {

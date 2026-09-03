@@ -47,7 +47,7 @@ export async function fetchAndEnrichGreenhouseJobs(limit = 15): Promise<JobWithC
             "Accept": "application/json, text/plain, */*",
           },
           signal: AbortSignal.timeout(2000),
-          next: { revalidate: 3600 },
+          cache: "no-store",
         });
 
         if (!res.ok) return;
