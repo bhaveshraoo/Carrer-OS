@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { syncAndFetchSupabaseJobs } from "@/lib/jobs/sync-engine";
 
 export const dynamic = "force-dynamic";
+export const runtime = "edge";
 export const revalidate = 0;
 
 export async function GET(request: Request) {
@@ -42,12 +43,12 @@ export async function GET(request: Request) {
           totalInternships: internships,
           lastUpdated: "Just now",
         },
-        build_version: "v8-no-meesho-guaranteed",
+        build_version: "v9-edge-runtime-no-meesho",
       },
       {
         headers: {
           "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-          "X-CareerOS-Build": "v8-no-meesho-guaranteed",
+          "X-CareerOS-Build": "v9-edge-runtime-no-meesho",
         },
       }
     );
