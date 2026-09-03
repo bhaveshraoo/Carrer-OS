@@ -400,35 +400,38 @@ export async function fetchActiveJobsWithDetails(
       .order("created_at", { ascending: false });
 
     if (!error && rawJobs && rawJobs.length > 0) {
-      return rawJobs
-        .map((j: any) => {
-          const company = j.company || {};
-          const metadata = company.metadata || {};
-          const tier = metadata.tier || metadata.industry || "Product";
+      const cleanRawJobs = rawJobs.filter((j: any) => !/^\d+$/.test(String(j.id)));
+      if (cleanRawJobs.length >= 15) {
+        return cleanRawJobs
+          .map((j: any) => {
+            const company = j.company || {};
+            const metadata = company.metadata || {};
+            const tier = metadata.tier || metadata.industry || "Product";
 
-          return {
-            id: j.id,
-            company_id: j.company_id,
-            company_name: company.name || "Unknown Company",
-            company_slug: company.slug || "unknown",
-            company_logo_url: company.logo_url || null,
-            company_tier: tier,
-            role: j.role,
-            description: j.description,
-            domain: j.domain,
-            location: j.location,
-            ctc_range: j.ctc_range,
-            tech_stack: j.tech_stack || [],
-            interview_types: j.interview_types || [],
-            application_url: j.application_url,
-            last_date: j.last_date,
-            status: j.status,
-            created_at: j.created_at,
-            is_wishlisted: wishlistedJobIds.has(j.id),
-            is_company_targeted: targetedCompanyIds.has(j.company_id),
-          };
-        })
-        .filter((j: any) => isJobActive(j.last_date));
+            return {
+              id: j.id,
+              company_id: j.company_id,
+              company_name: company.name || "Unknown Company",
+              company_slug: company.slug || "unknown",
+              company_logo_url: company.logo_url || null,
+              company_tier: tier,
+              role: j.role,
+              description: j.description,
+              domain: j.domain,
+              location: j.location,
+              ctc_range: j.ctc_range,
+              tech_stack: j.tech_stack || [],
+              interview_types: j.interview_types || [],
+              application_url: j.application_url,
+              last_date: j.last_date,
+              status: j.status,
+              created_at: j.created_at,
+              is_wishlisted: wishlistedJobIds.has(j.id),
+              is_company_targeted: targetedCompanyIds.has(j.company_id),
+            };
+          })
+          .filter((j: any) => isJobActive(j.last_date));
+      }
     }
   } catch (err) {
     console.warn("Notice checking Supabase jobs table:", err);
