@@ -28,18 +28,7 @@ export async function syncAndFetchSupabaseJobs(
   const adminClient = getAdminSupabaseClient(userClient);
   const nowISO = new Date().toISOString();
 
-  // 1. Purge legacy numeric fallback IDs (1..35) from DB
-  try {
-    const legacyIds = Array.from({ length: 35 }, (_, i) => String(i + 1));
-    await adminClient.from("jobs").delete().in("id", legacyIds);
-
-    // Purge legacy fallback jobs from DB before inserting fresh multi-agent batch
-    await adminClient.from("jobs").delete().neq("id", "0");
-  } catch {
-    // Ignore if delete fails
-  }
-
-  // 2. Fetch user wishlists & targeted company IDs
+  // 1. Fetch user wishlists & targeted company IDs
   let wishlistedJobIds = new Set<string>();
   let targetedCompanyIds = new Set<string>();
 
@@ -61,7 +50,7 @@ export async function syncAndFetchSupabaseJobs(
     }
   }
 
-  // 3. Query active non-expired jobs from Supabase DB
+  // 2. Query active non-expired jobs from Supabase DB
   try {
     const { data: rawDbJobs, error } = await userClient
       .from("jobs")
@@ -76,14 +65,12 @@ export async function syncAndFetchSupabaseJobs(
     // Filter out legacy numeric string IDs ("1", "2", ..., "35")
     const dbJobs = (rawDbJobs || []).filter((j: any) => !/^\d+$/.test(String(j.id)));
 
-    if (!error && dbJobs && dbJobs.length >= 15) {
+    if (!error && dbJobs && dbJobs.length >= 10) {
       const uniqueCompanies = new Set(dbJobs.map((j: any) => j.company?.name || j.company_name)).size;
       const top10Companies = new Set(dbJobs.slice(0, 10).map((j: any) => j.company?.name || j.company_name)).size;
 
       // If DB has at least 4 diverse companies AND the top 10 items contain at least 3 distinct companies, serve DB records.
-      // Otherwise, trigger multi-agent fresh fetch below to fix single-company top clutter!
       if (uniqueCompanies >= 4 && top10Companies >= 3) {
-        // Interleave DB jobs round-robin across companies for 100% balanced feed
         const companyGroupMap = new Map<string, any[]>();
         for (const j of dbJobs) {
           const cName = j.company?.name || j.company_name || "Company";
@@ -139,7 +126,7 @@ export async function syncAndFetchSupabaseJobs(
     // Fallback below
   }
 
-  // 4. Fallback to Live 4-Agent Aggregated Jobs (Greenhouse, Jobicy, Remotive, Lever)
+  // 3. Fallback to Live 4-Agent Aggregated Jobs (Greenhouse, Jobicy, Remotive, Lever + High-Diversity Fallback)
   const freshApiJobs = await getReal30IndianJobs();
 
   // Asynchronously seed/upsert jobs to Supabase DB in background batch without blocking client request

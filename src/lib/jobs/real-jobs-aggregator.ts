@@ -169,12 +169,6 @@ async function fetchFreshJobs(): Promise<JobWithCompany[]> {
 }
 
 export async function getReal30IndianJobs(): Promise<JobWithCompany[]> {
-  const now = Date.now();
-
-  if (cachedRealJobs && cachedRealJobs.length > 0 && now - lastFetchTimestamp < CACHE_TTL_MS) {
-    return cachedRealJobs.filter((j) => isJobActive(j.last_date));
-  }
-
   const freshJobs = await fetchFreshJobs();
   return freshJobs.filter((j) => isJobActive(j.last_date));
 }
