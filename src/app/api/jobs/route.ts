@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { syncAndFetchSupabaseJobs } from "@/lib/jobs/sync-engine";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(request: Request) {
   try {
     const supabase = await createClient();
@@ -17,17 +20,24 @@ export async function GET(request: Request) {
         j.description.toLowerCase().includes("intern")
     ).length;
 
-    return NextResponse.json({
-      success: true,
-      jobs,
-      count: jobs.length,
-      stats: {
-        totalJobs: jobs.length,
-        totalCompanies: uniqueCompanies,
-        totalInternships: internships,
-        lastUpdated: "Just now",
+    return NextResponse.json(
+      {
+        success: true,
+        jobs,
+        count: jobs.length,
+        stats: {
+          totalJobs: jobs.length,
+          totalCompanies: uniqueCompanies,
+          totalInternships: internships,
+          lastUpdated: "Just now",
+        },
       },
-    });
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      }
+    );
   } catch (error) {
     console.error("GET /api/jobs error:", error);
     return NextResponse.json(
