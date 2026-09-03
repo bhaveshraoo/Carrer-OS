@@ -49,7 +49,7 @@ export default function JobPortalDashboardPage() {
 
   const fetchJobs = async () => {
     try {
-      const res = await fetch("/api/jobs");
+      const res = await fetch(`/api/jobs?t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       if (data.success && data.jobs) {
         setJobs(data.jobs);

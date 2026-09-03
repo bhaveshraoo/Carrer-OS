@@ -37,39 +37,41 @@ const GREENHOUSE_INDIA_COMPANIES = [
 export async function fetchAndEnrichGreenhouseJobs(limit = 15): Promise<JobWithCompany[]> {
   const companyJobsMap: Map<string, JobWithCompany[]> = new Map();
 
-  for (const comp of GREENHOUSE_INDIA_COMPANIES) {
-    try {
-      const res = await fetch(`https://boards-api.greenhouse.io/v1/boards/${comp.slug}/jobs?content=true`, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-          "Accept": "application/json, text/plain, */*",
-        },
-        signal: AbortSignal.timeout(4000),
-        next: { revalidate: 3600 },
-      });
-
-      if (!res.ok) continue;
-      const data = await res.json();
-      const jobs: GreenhouseJobRaw[] = data.jobs || [];
-
-      const compJobs: JobWithCompany[] = [];
-
-      for (const gJob of jobs) {
-        if (compJobs.length >= 3) break;
-
-        const location = gJob.location?.name || "India (Remote / Hybrid)";
-        if (!isIndianLocation(location)) continue;
-
-        const rawContent = gJob.content || gJob.title;
-
-        const aiData = await enrichJobWithAi({
-          title: gJob.title,
-          company_name: comp.name,
-          description: rawContent,
-          category: "Software Engineering",
+  // Parallel fetch across all Greenhouse companies with 2s timeout
+  await Promise.all(
+    GREENHOUSE_INDIA_COMPANIES.map(async (comp) => {
+      try {
+        const res = await fetch(`https://boards-api.greenhouse.io/v1/boards/${comp.slug}/jobs?content=true`, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "application/json, text/plain, */*",
+          },
+          signal: AbortSignal.timeout(2000),
+          next: { revalidate: 3600 },
         });
 
-        const formattedDescription = `📌 JOB OVERVIEW
+        if (!res.ok) return;
+        const data = await res.json();
+        const jobs: GreenhouseJobRaw[] = data.jobs || [];
+
+        const compJobs: JobWithCompany[] = [];
+
+        for (const gJob of jobs) {
+          if (compJobs.length >= 2) break;
+
+          const location = gJob.location?.name || "India (Remote / Hybrid)";
+          if (!isIndianLocation(location)) continue;
+
+          const rawContent = gJob.content || gJob.title;
+
+          const aiData = await enrichJobWithAi({
+            title: gJob.title,
+            company_name: comp.name,
+            description: rawContent,
+            category: "Software Engineering",
+          });
+
+          const formattedDescription = `📌 JOB OVERVIEW
 ${aiData.summary}
 
 🎯 ELIGIBILITY & BATCH REQUIREMENTS
@@ -90,37 +92,38 @@ ${aiData.interview_types.map((type, idx) => `${idx + 1}. ${type}`).join("\n")}
 🎁 PERKS & BENEFITS
 ${aiData.benefits.map((b) => `• ${b}`).join("\n")}`;
 
-        const updatedDate = gJob.updated_at ? new Date(gJob.updated_at).toISOString() : new Date().toISOString();
-        const lastDate = new Date(Date.now() + 30 * 86400000).toISOString();
+          const updatedDate = gJob.updated_at ? new Date(gJob.updated_at).toISOString() : new Date().toISOString();
+          const lastDate = new Date(Date.now() + 30 * 86400000).toISOString();
 
-        compJobs.push({
-          id: `greenhouse-${gJob.id}`,
-          company_id: `comp-${comp.slug}`,
-          company_name: comp.name,
-          company_slug: comp.slug,
-          company_logo_url: null,
-          company_tier: comp.tier,
-          role: gJob.title.trim(),
-          description: formattedDescription,
-          domain: aiData.ai_category || "Software Engineering",
-          location: location.trim(),
-          ctc_range: "₹24L - ₹42L PA",
-          tech_stack: aiData.tech_stack,
-          interview_types: aiData.interview_types,
-          application_url: gJob.absolute_url || `https://boards.greenhouse.io/${comp.slug}/jobs/${gJob.id}`,
-          last_date: lastDate,
-          status: "active",
-          created_at: updatedDate,
-        });
-      }
+          compJobs.push({
+            id: `greenhouse-${gJob.id}`,
+            company_id: `comp-${comp.slug}`,
+            company_name: comp.name,
+            company_slug: comp.slug,
+            company_logo_url: null,
+            company_tier: comp.tier,
+            role: gJob.title.trim(),
+            description: formattedDescription,
+            domain: aiData.ai_category || "Software Engineering",
+            location: location.trim(),
+            ctc_range: "₹24L - ₹42L PA",
+            tech_stack: aiData.tech_stack,
+            interview_types: aiData.interview_types,
+            application_url: gJob.absolute_url || `https://boards.greenhouse.io/${comp.slug}/jobs/${gJob.id}`,
+            last_date: lastDate,
+            status: "active",
+            created_at: updatedDate,
+          });
+        }
 
-      if (compJobs.length > 0) {
-        companyJobsMap.set(comp.slug, compJobs);
+        if (compJobs.length > 0) {
+          companyJobsMap.set(comp.slug, compJobs);
+        }
+      } catch {
+        // Skip on fetch error/timeout
       }
-    } catch {
-      // Continue next company
-    }
-  }
+    })
+  );
 
   const result: JobWithCompany[] = [];
   let addedAny = true;

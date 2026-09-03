@@ -17,9 +17,40 @@ function getAdminSupabaseClient(fallbackClient: SupabaseClient): SupabaseClient 
 }
 
 /**
+ * Round-robin interleave helper so adjacent job cards in the UI always alternate company names.
+ */
+function interleaveByCompany(jobsList: JobWithCompany[]): JobWithCompany[] {
+  const companyMap = new Map<string, JobWithCompany[]>();
+
+  for (const j of jobsList) {
+    const cName = (j.company_name || j.company_slug || "Company").toLowerCase();
+    const list = companyMap.get(cName) || [];
+    list.push(j);
+    companyMap.set(cName, list);
+  }
+
+  const result: JobWithCompany[] = [];
+  let added = true;
+  let idx = 0;
+
+  while (added) {
+    added = false;
+    for (const list of companyMap.values()) {
+      if (idx < list.length) {
+        result.push(list[idx]);
+        added = true;
+      }
+    }
+    idx++;
+  }
+
+  return result;
+}
+
+/**
  * Fast Job Fetch & Background Sync Engine:
  * 1. Parallel fetches wishlists, target companies, and active jobs from Supabase DB.
- * 2. Streams multi-company capped tech jobs across Roblox, Databricks, Rubrik, Stripe, Bloomreach, TCS, Infosys.
+ * 2. Streams multi-company capped tech jobs across Bloomreach, Roblox, Welo, Rubrik, Stripe, Databricks, TCS, Infosys, Google, Microsoft.
  */
 export async function syncAndFetchSupabaseJobs(
   userClient: SupabaseClient,
@@ -50,9 +81,13 @@ export async function syncAndFetchSupabaseJobs(
     }
   }
 
-  // 2. Query active non-expired jobs from Supabase DB
+  // 2. Fetch fresh live jobs across all harvesters + preset multi-company fallbacks
+  const rawApiJobs = await getReal30IndianJobs();
+  const candidatePool: JobWithCompany[] = [...rawApiJobs, ...FALLBACK_JOBS];
+
+  // 3. Query active jobs from Supabase DB to combine
   try {
-    const { data: rawDbJobs, error } = await userClient
+    const { data: rawDbJobs } = await userClient
       .from("jobs")
       .select(`
         *,
@@ -62,107 +97,66 @@ export async function syncAndFetchSupabaseJobs(
       .gte("last_date", nowISO)
       .order("created_at", { ascending: false });
 
-    // Filter out legacy single-company jobs (Meesho / legacy numeric IDs)
-    const dbJobs = (rawDbJobs || []).filter((j: any) => {
-      const cName = (j.company?.name || j.company_name || "").toLowerCase();
-      const cSlug = (j.company?.slug || j.company_slug || "").toLowerCase();
-      if (/^\d+$/.test(String(j.id))) return false;
-      if (cName.includes("meesho") || cSlug.includes("meesho")) return false;
-      return true;
-    });
+    if (rawDbJobs && rawDbJobs.length > 0) {
+      for (const j of rawDbJobs) {
+        const company = j.company || {};
+        const metadata = company.metadata || {};
+        const tier = metadata.tier || metadata.industry || "Product";
+        const cName = company.name || j.company_name || "Company";
 
-    if (!error && dbJobs && dbJobs.length >= 10) {
-      const uniqueCompanies = new Set(dbJobs.map((j: any) => j.company?.name || j.company_name)).size;
-      const top10Companies = new Set(dbJobs.slice(0, 10).map((j: any) => j.company?.name || j.company_name)).size;
-
-      // If DB has at least 4 diverse companies AND the top 10 items contain at least 3 distinct companies, serve DB records.
-      if (uniqueCompanies >= 4 && top10Companies >= 3) {
-        const companyGroupMap = new Map<string, any[]>();
-        for (const j of dbJobs) {
-          const cName = j.company?.name || j.company_name || "Company";
-          const list = companyGroupMap.get(cName) || [];
-          list.push(j);
-          companyGroupMap.set(cName, list);
-        }
-
-        const interleavedDbJobs: any[] = [];
-        let added = true;
-        let rIdx = 0;
-        while (added) {
-          added = false;
-          for (const list of companyGroupMap.values()) {
-            if (rIdx < list.length) {
-              interleavedDbJobs.push(list[rIdx]);
-              added = true;
-            }
-          }
-          rIdx++;
-        }
-
-        return interleavedDbJobs.map((j: any) => {
-          const company = j.company || {};
-          const metadata = company.metadata || {};
-          const tier = metadata.tier || metadata.industry || "Product";
-
-          return {
-            id: j.id,
-            company_id: j.company_id,
-            company_name: company.name || j.company_name || "Company",
-            company_slug: company.slug || "company",
-            company_logo_url: company.logo_url || null,
-            company_tier: tier,
-            role: j.role,
-            description: j.description,
-            domain: j.domain,
-            location: j.location,
-            ctc_range: j.ctc_range,
-            tech_stack: j.tech_stack || [],
-            interview_types: j.interview_types || [],
-            application_url: j.application_url,
-            last_date: j.last_date,
-            status: j.status,
-            created_at: j.created_at,
-            is_wishlisted: wishlistedJobIds.has(j.id),
-            is_company_targeted: targetedCompanyIds.has(j.company_id),
-          };
+        candidatePool.push({
+          id: j.id,
+          company_id: j.company_id,
+          company_name: cName,
+          company_slug: company.slug || "company",
+          company_logo_url: company.logo_url || null,
+          company_tier: tier,
+          role: j.role,
+          description: j.description,
+          domain: j.domain,
+          location: j.location,
+          ctc_range: j.ctc_range,
+          tech_stack: j.tech_stack || [],
+          interview_types: j.interview_types || [],
+          application_url: j.application_url,
+          last_date: j.last_date,
+          status: j.status,
+          created_at: j.created_at,
         });
       }
     }
-  } catch (err) {
-    // Fallback below
+  } catch {
+    // Ignore DB query errors
   }
 
-  // 3. Stream multi-agent jobs with strict per-company caps (Max 2 roles per company)
-  const rawApiJobs = await getReal30IndianJobs();
+  // 4. Strict Filtering & Per-Company Capping (Max 2 roles per company, NO Meesho)
   const companyCounts = new Map<string, number>();
-  const cappedApiJobs: JobWithCompany[] = [];
+  const cappedJobs: JobWithCompany[] = [];
 
-  for (const j of rawApiJobs) {
+  for (const j of candidatePool) {
     const cName = (j.company_name || j.company_slug || "Company").toLowerCase();
-    if (cName.includes("meesho")) continue;
+    const cSlug = (j.company_slug || "").toLowerCase();
+
+    // Absolute Purge of Meesho & Legacy Numeric Seed Rows
+    if (cName.includes("meesho") || cSlug.includes("meesho") || /^\d+$/.test(String(j.id))) {
+      continue;
+    }
+
     const count = companyCounts.get(cName) || 0;
     if (count < 2) {
       companyCounts.set(cName, count + 1);
-      cappedApiJobs.push(j);
+      cappedJobs.push(j);
     }
   }
 
-  // Fill with diverse preset FALLBACK_JOBS (TCS, Infosys, Google, Microsoft, Stripe, Bloomreach, Roblox)
-  for (const fj of FALLBACK_JOBS) {
-    const cName = fj.company_name.toLowerCase();
-    if (cName.includes("meesho")) continue;
-    const count = companyCounts.get(cName) || 0;
-    if (count < 2) {
-      companyCounts.set(cName, count + 1);
-      cappedApiJobs.push(fj);
-    }
-  }
+  // 5. Interleave jobs by company so adjacent cards alternate company names
+  const finalInterleavedJobs = interleaveByCompany(cappedJobs).slice(0, 30);
 
-  // Asynchronously seed/upsert jobs to Supabase DB in background batch
-  if (cappedApiJobs.length > 0) {
+  // 6. Async seed/upsert multi-company jobs to Supabase DB in background batch
+  if (finalInterleavedJobs.length > 0) {
     (async () => {
       try {
-        const companyBatch = cappedApiJobs.map((job) => ({
+        const companyBatch = finalInterleavedJobs.map((job) => ({
           name: job.company_name,
           slug: job.company_slug,
           logo_url: job.company_logo_url,
@@ -176,7 +170,7 @@ export async function syncAndFetchSupabaseJobs(
 
         await adminClient.from("companies").upsert(companyBatch, { onConflict: "slug" });
 
-        const jobBatch = cappedApiJobs.map((job) => ({
+        const jobBatch = finalInterleavedJobs.map((job) => ({
           id: job.id,
           company_id: job.company_id,
           role: job.role,
@@ -199,7 +193,7 @@ export async function syncAndFetchSupabaseJobs(
     })();
   }
 
-  return cappedApiJobs.map((j) => ({
+  return finalInterleavedJobs.map((j) => ({
     ...j,
     created_at: nowISO,
     is_wishlisted: wishlistedJobIds.has(j.id),
