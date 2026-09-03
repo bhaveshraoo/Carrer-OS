@@ -4,7 +4,7 @@ import { fetchAndEnrichRemotiveJobs } from "./remotive";
 import { fetchAndEnrichJobicyJobs } from "./jobicy";
 import { isJobActive, type JobWithCompany } from "./jobs";
 
-const HIGH_DIVERSITY_FALLBACK_JOBS: JobWithCompany[] = [
+export const HIGH_DIVERSITY_FALLBACK_JOBS: JobWithCompany[] = [
   {
     id: "multi-bloomreach-1",
     company_id: "comp-bloomreach",
@@ -130,7 +130,8 @@ async function fetchFreshJobs(): Promise<JobWithCompany[]> {
       fetchAndEnrichLeverJobs(15).catch(() => []),
     ]);
 
-    const combinedJobs: JobWithCompany[] = [];
+    // Always seed HIGH_DIVERSITY_FALLBACK_JOBS into the combined list first
+    const combinedJobs: JobWithCompany[] = [...HIGH_DIVERSITY_FALLBACK_JOBS];
     const maxLen = Math.max(ghJobs.length, jobicyJobs.length, remotiveJobs.length, leverJobs.length);
 
     for (let i = 0; i < maxLen; i++) {
@@ -140,14 +141,15 @@ async function fetchFreshJobs(): Promise<JobWithCompany[]> {
       if (i < leverJobs.length) combinedJobs.push(leverJobs[i]);
     }
 
-    // Always include high diversity fallback jobs to ensure Bloomreach, Roblox, Welo, Rubrik, Stripe, Databricks
+    // Hard purge any Meesho occurrences
     const filteredCombined = combinedJobs.filter(
-      (j) => !j.company_name.toLowerCase().includes("meesho") && !j.company_slug.toLowerCase().includes("meesho")
+      (j) =>
+        !j.company_name.toLowerCase().includes("meesho") &&
+        !j.company_slug.toLowerCase().includes("meesho") &&
+        !j.company_id.toLowerCase().includes("meesho") &&
+        !j.description.toLowerCase().includes("meesho") &&
+        !j.application_url.toLowerCase().includes("meesho")
     );
-
-    if (filteredCombined.length < 5) {
-      filteredCombined.push(...HIGH_DIVERSITY_FALLBACK_JOBS);
-    }
 
     const nowISO = new Date().toISOString();
     const futureISO = new Date(Date.now() + 30 * 86400000).toISOString();
