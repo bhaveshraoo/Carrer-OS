@@ -29,7 +29,7 @@ export function JobPortalRightSidebar() {
           {[
             { name: "Google", slug: "google", logo: "https://logo.clearbit.com/google.com", count: "14 Roles", tier: "Tier 1 Product" },
             { name: "Microsoft", slug: "microsoft", logo: "https://logo.clearbit.com/microsoft.com", count: "9 Roles", tier: "Cloud & AI" },
-            { name: "Meesho", slug: "meesho", logo: "https://logo.clearbit.com/meesho.com", count: "18 Roles", tier: "Unicorn Tech" },
+            { name: "Rubrik", slug: "rubrik", logo: "https://logo.clearbit.com/rubrik.com", count: "11 Roles", tier: "Zero Trust Security" },
             { name: "Stripe", slug: "stripe", logo: "https://logo.clearbit.com/stripe.com", count: "7 Roles", tier: "Fintech Infra" },
             { name: "PhonePe", slug: "phonepe", logo: "https://logo.clearbit.com/phonepe.com", count: "12 Roles", tier: "Mobile Systems" },
           ].map((c) => (

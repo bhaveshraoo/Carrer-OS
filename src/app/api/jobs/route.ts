@@ -17,6 +17,9 @@ export async function GET(request: Request) {
       (j) =>
         !j.company_name.toLowerCase().includes("meesho") &&
         !j.company_slug.toLowerCase().includes("meesho") &&
+        !j.company_id.toLowerCase().includes("meesho") &&
+        !j.description.toLowerCase().includes("meesho") &&
+        !j.application_url.toLowerCase().includes("meesho") &&
         !/^\d+$/.test(String(j.id))
     );
 
@@ -39,10 +42,12 @@ export async function GET(request: Request) {
           totalInternships: internships,
           lastUpdated: "Just now",
         },
+        build_version: "v8-no-meesho-guaranteed",
       },
       {
         headers: {
           "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          "X-CareerOS-Build": "v8-no-meesho-guaranteed",
         },
       }
     );
