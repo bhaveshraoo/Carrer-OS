@@ -19,8 +19,7 @@ function getAdminSupabaseClient(fallbackClient: SupabaseClient): SupabaseClient 
 /**
  * Fast Job Fetch & Background Sync Engine:
  * 1. Parallel fetches wishlists, target companies, and active jobs from Supabase DB.
- * 2. If DB is empty, loads live aggregated jobs and asynchronously seeds DB in background batch (0ms blocking delay).
- * 3. Correctly matches `job_wishlists` and `user_company_targets` table names.
+ * 2. If DB contains stale single-company jobs, fetches live multi-agent jobs and background seeds DB.
  */
 export async function syncAndFetchSupabaseJobs(
   userClient: SupabaseClient,
@@ -29,15 +28,15 @@ export async function syncAndFetchSupabaseJobs(
   const adminClient = getAdminSupabaseClient(userClient);
   const nowISO = new Date().toISOString();
 
-  // 1. Always purge legacy numeric IDs (1..35) from DB to prevent stale single-company caching
+  // 1. Purge legacy numeric fallback IDs (1..35) from DB
   try {
     const legacyIds = Array.from({ length: 35 }, (_, i) => String(i + 1));
     await adminClient.from("jobs").delete().in("id", legacyIds);
   } catch {
-    // Ignore
+    // Ignore if delete fails
   }
 
-  // 2. Fetch user wishlists & targeted company IDs in parallel with active jobs
+  // 2. Fetch user wishlists & targeted company IDs
   let wishlistedJobIds = new Set<string>();
   let targetedCompanyIds = new Set<string>();
 
@@ -55,13 +54,13 @@ export async function syncAndFetchSupabaseJobs(
         targetedCompanyIds = new Set(targetsRes.data.map((t: any) => t.company_id));
       }
     } catch {
-      // Ignore if table queries fail
+      // Ignore if wishlist queries fail
     }
   }
 
-  // 2. Query active non-expired jobs from Supabase DB
+  // 3. Query active non-expired jobs from Supabase DB
   try {
-    const { data: dbJobs, error } = await userClient
+    const { data: rawDbJobs, error } = await userClient
       .from("jobs")
       .select(`
         *,
@@ -71,53 +70,53 @@ export async function syncAndFetchSupabaseJobs(
       .gte("last_date", nowISO)
       .order("created_at", { ascending: false });
 
+    // Filter out legacy numeric string IDs ("1", "2", ..., "35")
+    const dbJobs = (rawDbJobs || []).filter((j: any) => !/^\d+$/.test(String(j.id)));
+
     if (!error && dbJobs && dbJobs.length >= 15) {
       const uniqueCompanies = new Set(dbJobs.map((j: any) => j.company?.name || j.company_name)).size;
       // If DB has at least 4 diverse companies, serve DB records. Otherwise, trigger multi-agent fresh fetch below!
       if (uniqueCompanies >= 4) {
         return dbJobs.map((j: any) => {
-        const company = j.company || {};
-        const metadata = company.metadata || {};
-        const tier = metadata.tier || metadata.industry || "Product";
+          const company = j.company || {};
+          const metadata = company.metadata || {};
+          const tier = metadata.tier || metadata.industry || "Product";
 
-        return {
-          id: j.id,
-          company_id: j.company_id,
-          company_name: company.name || j.company_name || "Company",
-          company_slug: company.slug || "company",
-          company_logo_url: company.logo_url || null,
-          company_tier: tier,
-          role: j.role,
-          description: j.description,
-          domain: j.domain,
-          location: j.location,
-          ctc_range: j.ctc_range,
-          tech_stack: j.tech_stack || [],
-          interview_types: j.interview_types || [],
-          application_url: j.application_url,
-          last_date: j.last_date,
-          status: j.status,
-          created_at: j.created_at,
-          is_wishlisted: wishlistedJobIds.has(j.id),
-          is_company_targeted: targetedCompanyIds.has(j.company_id),
-        };
-      });
+          return {
+            id: j.id,
+            company_id: j.company_id,
+            company_name: company.name || j.company_name || "Company",
+            company_slug: company.slug || "company",
+            company_logo_url: company.logo_url || null,
+            company_tier: tier,
+            role: j.role,
+            description: j.description,
+            domain: j.domain,
+            location: j.location,
+            ctc_range: j.ctc_range,
+            tech_stack: j.tech_stack || [],
+            interview_types: j.interview_types || [],
+            application_url: j.application_url,
+            last_date: j.last_date,
+            status: j.status,
+            created_at: j.created_at,
+            is_wishlisted: wishlistedJobIds.has(j.id),
+            is_company_targeted: targetedCompanyIds.has(j.company_id),
+          };
+        });
       }
     }
   } catch (err) {
     // Fallback below
   }
 
-  // 3. Fallback to 30 Live Aggregated Jobs (Lever + Greenhouse + Remotive)
+  // 4. Fallback to Live 4-Agent Aggregated Jobs (Greenhouse, Jobicy, Remotive, Lever)
   const freshApiJobs = await getReal30IndianJobs();
 
   // Asynchronously seed/upsert jobs to Supabase DB in background batch without blocking client request
   if (freshApiJobs.length > 0) {
     (async () => {
       try {
-        // Purge legacy numeric fallback IDs 1..35 from DB
-        const legacyIds = Array.from({ length: 35 }, (_, i) => String(i + 1));
-        await adminClient.from("jobs").delete().in("id", legacyIds);
         const companyBatch = freshApiJobs.map((job) => ({
           name: job.company_name,
           slug: job.company_slug,
