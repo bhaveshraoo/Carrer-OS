@@ -63,8 +63,11 @@ export async function syncAndFetchSupabaseJobs(
       .gte("last_date", nowISO)
       .order("created_at", { ascending: false });
 
-    if (!error && dbJobs && dbJobs.length > 0) {
-      return dbJobs.map((j: any) => {
+    if (!error && dbJobs && dbJobs.length >= 15) {
+      const uniqueCompanies = new Set(dbJobs.map((j: any) => j.company?.name || j.company_name)).size;
+      // If DB has at least 4 diverse companies, serve DB records. Otherwise, trigger multi-agent fresh fetch below!
+      if (uniqueCompanies >= 4) {
+        return dbJobs.map((j: any) => {
         const company = j.company || {};
         const metadata = company.metadata || {};
         const tier = metadata.tier || metadata.industry || "Product";
@@ -91,6 +94,7 @@ export async function syncAndFetchSupabaseJobs(
           is_company_targeted: targetedCompanyIds.has(j.company_id),
         };
       });
+      }
     }
   } catch (err) {
     // Fallback below

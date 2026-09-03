@@ -1,20 +1,22 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { fetchAllIndianJobs } from "@/lib/jobs/multi-source";
+import { createClient } from "@supabase/supabase-js";
+import { getReal30IndianJobs } from "@/lib/jobs/real-jobs-aggregator";
 
 export async function POST() {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (!user) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    if (!url || !serviceKey) {
+      return NextResponse.json({ error: "Missing Supabase credentials" }, { status: 500 });
     }
 
-    // Fetch 15 Lever + 15 Greenhouse + 15 Remotive Indian Jobs
-    const { jobs, sources } = await fetchAllIndianJobs();
+    const supabase = createClient(url, serviceKey);
 
-    if (jobs.length === 0) {
+    // Fetch 30-40 fresh live jobs across all 4 Harvester Agents (Greenhouse, Jobicy, Remotive, Lever)
+    const freshJobs = await getReal30IndianJobs();
+
+    if (freshJobs.length === 0) {
       return NextResponse.json({
         success: true,
         message: "No new jobs found from external sources",
@@ -22,25 +24,27 @@ export async function POST() {
       });
     }
 
-    // 1. Batch Upsert Companies
-    const companyBatch = jobs.map((job) => ({
+    // 1. Wipe out stale old single-company jobs from DB
+    const nowISO = new Date().toISOString();
+    await supabase.from("jobs").delete().lt("last_date", nowISO);
+
+    // 2. Batch Upsert Companies
+    const companyBatch = freshJobs.map((job) => ({
       name: job.company_name,
       slug: job.company_slug,
       logo_url: job.company_logo_url,
       metadata: {
         tier: job.company_tier,
-        industry: "Technology",
-        verified: true,
         location: job.location,
+        verified: true,
+        auto_ingested: true,
       },
     }));
 
-    await (supabase as any)
-      .from("companies")
-      .upsert(companyBatch, { onConflict: "slug" });
+    await supabase.from("companies").upsert(companyBatch, { onConflict: "slug" });
 
-    // 2. Batch Upsert Jobs
-    const jobBatch = jobs.map((job) => ({
+    // 3. Batch Upsert Jobs
+    const jobBatch = freshJobs.map((job) => ({
       id: job.id,
       company_id: job.company_id,
       role: job.role,
@@ -53,19 +57,20 @@ export async function POST() {
       application_url: job.application_url,
       last_date: job.last_date,
       status: "active",
-      created_at: job.created_at,
+      created_at: nowISO,
     }));
 
-    await (supabase as any)
-      .from("jobs")
-      .upsert(jobBatch, { onConflict: "id" });
+    const { error: jobErr } = await supabase.from("jobs").upsert(jobBatch, { onConflict: "id" });
+
+    if (jobErr) {
+      console.error("Sync batch upsert error:", jobErr);
+    }
 
     return NextResponse.json({
       success: true,
-      message: `Successfully processed ${jobs.length} Indian jobs (Lever, Greenhouse, Remotive)`,
-      sources,
-      dbSyncCount: jobs.length,
-      jobs,
+      message: `Successfully synchronized ${freshJobs.length} live jobs across Roblox, Databricks, Rubrik, Stripe, Coinbase, Jobicy & Remotive!`,
+      dbSyncCount: freshJobs.length,
+      jobs: freshJobs,
     });
   } catch (error: any) {
     console.error("POST /api/jobs/sync error:", error);
