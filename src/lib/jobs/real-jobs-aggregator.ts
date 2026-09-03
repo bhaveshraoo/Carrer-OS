@@ -39,7 +39,7 @@ async function fetchFreshJobs(): Promise<JobWithCompany[]> {
 
     const sequentialJobs: JobWithCompany[] = combinedJobs.map((job, idx) => ({
       ...job,
-      id: job.id || String(idx + 1),
+      id: job.id || `job-${idx + 1}`,
       created_at: job.created_at || nowISO,
       last_date: job.last_date || futureISO,
       status: "active" as const,
