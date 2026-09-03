@@ -19,7 +19,7 @@ function getAdminSupabaseClient(fallbackClient: SupabaseClient): SupabaseClient 
 /**
  * Fast Job Fetch & Background Sync Engine:
  * 1. Parallel fetches wishlists, target companies, and active jobs from Supabase DB.
- * 2. If DB contains single-company clusters, streams capped multi-company jobs & seeds DB.
+ * 2. Streams multi-company capped tech jobs across Roblox, Databricks, Rubrik, Stripe, Bloomreach, TCS, Infosys.
  */
 export async function syncAndFetchSupabaseJobs(
   userClient: SupabaseClient,
@@ -62,8 +62,14 @@ export async function syncAndFetchSupabaseJobs(
       .gte("last_date", nowISO)
       .order("created_at", { ascending: false });
 
-    // Filter out legacy numeric string IDs ("1", "2", ..., "35")
-    const dbJobs = (rawDbJobs || []).filter((j: any) => !/^\d+$/.test(String(j.id)));
+    // Filter out legacy single-company jobs (Meesho / legacy numeric IDs)
+    const dbJobs = (rawDbJobs || []).filter((j: any) => {
+      const cName = (j.company?.name || j.company_name || "").toLowerCase();
+      const cSlug = (j.company?.slug || j.company_slug || "").toLowerCase();
+      if (/^\d+$/.test(String(j.id))) return false;
+      if (cName.includes("meesho") || cSlug.includes("meesho")) return false;
+      return true;
+    });
 
     if (!error && dbJobs && dbJobs.length >= 10) {
       const uniqueCompanies = new Set(dbJobs.map((j: any) => j.company?.name || j.company_name)).size;
@@ -132,7 +138,8 @@ export async function syncAndFetchSupabaseJobs(
   const cappedApiJobs: JobWithCompany[] = [];
 
   for (const j of rawApiJobs) {
-    const cName = j.company_name || j.company_slug || "Company";
+    const cName = (j.company_name || j.company_slug || "Company").toLowerCase();
+    if (cName.includes("meesho")) continue;
     const count = companyCounts.get(cName) || 0;
     if (count < 2) {
       companyCounts.set(cName, count + 1);
@@ -140,15 +147,14 @@ export async function syncAndFetchSupabaseJobs(
     }
   }
 
-  // If capped list is below 15 items, fill with diverse preset FALLBACK_JOBS (TCS, Infosys, Google, Microsoft, Stripe)
-  if (cappedApiJobs.length < 15) {
-    for (const fj of FALLBACK_JOBS) {
-      const cName = fj.company_name;
-      const count = companyCounts.get(cName) || 0;
-      if (count < 2) {
-        companyCounts.set(cName, count + 1);
-        cappedApiJobs.push(fj);
-      }
+  // Fill with diverse preset FALLBACK_JOBS (TCS, Infosys, Google, Microsoft, Stripe, Bloomreach, Roblox)
+  for (const fj of FALLBACK_JOBS) {
+    const cName = fj.company_name.toLowerCase();
+    if (cName.includes("meesho")) continue;
+    const count = companyCounts.get(cName) || 0;
+    if (count < 2) {
+      companyCounts.set(cName, count + 1);
+      cappedApiJobs.push(fj);
     }
   }
 
