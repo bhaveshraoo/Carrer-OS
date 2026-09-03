@@ -75,8 +75,11 @@ export async function syncAndFetchSupabaseJobs(
 
     if (!error && dbJobs && dbJobs.length >= 15) {
       const uniqueCompanies = new Set(dbJobs.map((j: any) => j.company?.name || j.company_name)).size;
-      // If DB has at least 4 diverse companies, serve DB records. Otherwise, trigger multi-agent fresh fetch below!
-      if (uniqueCompanies >= 4) {
+      const top10Companies = new Set(dbJobs.slice(0, 10).map((j: any) => j.company?.name || j.company_name)).size;
+
+      // If DB has at least 4 diverse companies AND the top 10 items contain at least 3 distinct companies, serve DB records.
+      // Otherwise, trigger multi-agent fresh fetch below to fix single-company top clutter!
+      if (uniqueCompanies >= 4 && top10Companies >= 3) {
         return dbJobs.map((j: any) => {
           const company = j.company || {};
           const metadata = company.metadata || {};
