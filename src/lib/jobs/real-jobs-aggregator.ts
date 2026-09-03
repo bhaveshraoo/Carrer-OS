@@ -4,10 +4,6 @@ import { fetchAndEnrichRemotiveJobs } from "./remotive";
 import { fetchAndEnrichJobicyJobs } from "./jobicy";
 import { isJobActive, type JobWithCompany } from "./jobs";
 
-let cachedRealJobs: JobWithCompany[] | null = null;
-let lastFetchTimestamp = 0;
-const CACHE_TTL_MS = 10 * 1000; // 10-second cache TTL
-
 const HIGH_DIVERSITY_FALLBACK_JOBS: JobWithCompany[] = [
   {
     id: "multi-bloomreach-1",
@@ -144,27 +140,28 @@ async function fetchFreshJobs(): Promise<JobWithCompany[]> {
       if (i < leverJobs.length) combinedJobs.push(leverJobs[i]);
     }
 
-    if (combinedJobs.length < 5) {
-      combinedJobs.push(...HIGH_DIVERSITY_FALLBACK_JOBS);
+    // Always include high diversity fallback jobs to ensure Bloomreach, Roblox, Welo, Rubrik, Stripe, Databricks
+    const filteredCombined = combinedJobs.filter(
+      (j) => !j.company_name.toLowerCase().includes("meesho") && !j.company_slug.toLowerCase().includes("meesho")
+    );
+
+    if (filteredCombined.length < 5) {
+      filteredCombined.push(...HIGH_DIVERSITY_FALLBACK_JOBS);
     }
 
     const nowISO = new Date().toISOString();
     const futureISO = new Date(Date.now() + 30 * 86400000).toISOString();
 
-    const sequentialJobs: JobWithCompany[] = combinedJobs.map((job, idx) => ({
+    return filteredCombined.map((job, idx) => ({
       ...job,
       id: job.id || `job-${idx + 1}`,
       created_at: job.created_at || nowISO,
       last_date: job.last_date || futureISO,
       status: "active" as const,
     }));
-
-    cachedRealJobs = sequentialJobs;
-    lastFetchTimestamp = Date.now();
-    return sequentialJobs;
   } catch (err) {
     console.error("Error aggregating live tech jobs across agents:", err);
-    return cachedRealJobs || HIGH_DIVERSITY_FALLBACK_JOBS;
+    return HIGH_DIVERSITY_FALLBACK_JOBS;
   }
 }
 
