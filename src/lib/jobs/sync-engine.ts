@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getReal30IndianJobs } from "./real-jobs-aggregator";
-import { type JobWithCompany } from "./jobs";
+import { FALLBACK_JOBS, type JobWithCompany } from "./jobs";
 
 /**
  * Gets an Admin Supabase Client using SUPABASE_SERVICE_ROLE_KEY if available
@@ -19,7 +19,7 @@ function getAdminSupabaseClient(fallbackClient: SupabaseClient): SupabaseClient 
 /**
  * Fast Job Fetch & Background Sync Engine:
  * 1. Parallel fetches wishlists, target companies, and active jobs from Supabase DB.
- * 2. If DB contains stale single-company jobs, fetches live multi-agent jobs and background seeds DB.
+ * 2. If DB contains single-company clusters, streams capped multi-company jobs & seeds DB.
  */
 export async function syncAndFetchSupabaseJobs(
   userClient: SupabaseClient,
@@ -126,14 +126,37 @@ export async function syncAndFetchSupabaseJobs(
     // Fallback below
   }
 
-  // 3. Fallback to Live 4-Agent Aggregated Jobs (Greenhouse, Jobicy, Remotive, Lever + High-Diversity Fallback)
-  const freshApiJobs = await getReal30IndianJobs();
+  // 3. Stream multi-agent jobs with strict per-company caps (Max 2 roles per company)
+  const rawApiJobs = await getReal30IndianJobs();
+  const companyCounts = new Map<string, number>();
+  const cappedApiJobs: JobWithCompany[] = [];
 
-  // Asynchronously seed/upsert jobs to Supabase DB in background batch without blocking client request
-  if (freshApiJobs.length > 0) {
+  for (const j of rawApiJobs) {
+    const cName = j.company_name || j.company_slug || "Company";
+    const count = companyCounts.get(cName) || 0;
+    if (count < 2) {
+      companyCounts.set(cName, count + 1);
+      cappedApiJobs.push(j);
+    }
+  }
+
+  // If capped list is below 15 items, fill with diverse preset FALLBACK_JOBS (TCS, Infosys, Google, Microsoft, Stripe)
+  if (cappedApiJobs.length < 15) {
+    for (const fj of FALLBACK_JOBS) {
+      const cName = fj.company_name;
+      const count = companyCounts.get(cName) || 0;
+      if (count < 2) {
+        companyCounts.set(cName, count + 1);
+        cappedApiJobs.push(fj);
+      }
+    }
+  }
+
+  // Asynchronously seed/upsert jobs to Supabase DB in background batch
+  if (cappedApiJobs.length > 0) {
     (async () => {
       try {
-        const companyBatch = freshApiJobs.map((job) => ({
+        const companyBatch = cappedApiJobs.map((job) => ({
           name: job.company_name,
           slug: job.company_slug,
           logo_url: job.company_logo_url,
@@ -147,7 +170,7 @@ export async function syncAndFetchSupabaseJobs(
 
         await adminClient.from("companies").upsert(companyBatch, { onConflict: "slug" });
 
-        const jobBatch = freshApiJobs.map((job) => ({
+        const jobBatch = cappedApiJobs.map((job) => ({
           id: job.id,
           company_id: job.company_id,
           role: job.role,
@@ -170,7 +193,7 @@ export async function syncAndFetchSupabaseJobs(
     })();
   }
 
-  return freshApiJobs.map((j) => ({
+  return cappedApiJobs.map((j) => ({
     ...j,
     created_at: nowISO,
     is_wishlisted: wishlistedJobIds.has(j.id),
