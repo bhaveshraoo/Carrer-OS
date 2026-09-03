@@ -10,7 +10,15 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    const jobs = await syncAndFetchSupabaseJobs(supabase, user?.id);
+    const rawJobs = await syncAndFetchSupabaseJobs(supabase, user?.id);
+
+    // Bulletproof API Guard: Strictly filter out any Meesho or legacy numeric IDs
+    const jobs = rawJobs.filter(
+      (j) =>
+        !j.company_name.toLowerCase().includes("meesho") &&
+        !j.company_slug.toLowerCase().includes("meesho") &&
+        !/^\d+$/.test(String(j.id))
+    );
 
     const uniqueCompanies = new Set(jobs.map((j) => j.company_id || j.company_name)).size;
     const internships = jobs.filter(
