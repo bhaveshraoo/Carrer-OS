@@ -1,18 +1,16 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/server";
 import { syncAndFetchSupabaseJobs } from "@/lib/jobs/sync-engine";
 
 export const dynamic = "force-dynamic";
-export const runtime = "edge";
 export const revalidate = 0;
 
 export async function GET(request: Request) {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://fake.supabase.co";
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "fake-key";
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    const rawJobs = await syncAndFetchSupabaseJobs(supabase);
+    const rawJobs = await syncAndFetchSupabaseJobs(supabase, user?.id);
 
     // Bulletproof API Guard: Strictly filter out any Meesho or legacy numeric IDs
     const jobs = rawJobs.filter(
@@ -44,12 +42,12 @@ export async function GET(request: Request) {
           totalInternships: internships,
           lastUpdated: "Just now",
         },
-        build_version: "v10-pure-edge-runtime",
+        build_version: "v11-stable-production",
       },
       {
         headers: {
           "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-          "X-CareerOS-Build": "v10-pure-edge-runtime",
+          "X-CareerOS-Build": "v11-stable-production",
         },
       }
     );
