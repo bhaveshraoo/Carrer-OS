@@ -105,20 +105,20 @@ export async function syncAndFetchSupabaseJobs(
         const cName = company.name || j.company_name || "Company";
 
         candidatePool.push({
-          id: j.id,
-          company_id: j.company_id,
+          id: String(j.id),
+          company_id: j.company_id || "comp-unknown",
           company_name: cName,
-          company_slug: company.slug || "company",
+          company_slug: company.slug || j.company_slug || "company",
           company_logo_url: company.logo_url || null,
           company_tier: tier,
           role: j.role,
-          description: j.description,
-          domain: j.domain,
-          location: j.location,
-          ctc_range: j.ctc_range,
+          description: j.description || "",
+          domain: j.domain || "Software Engineering",
+          location: j.location || "India",
+          ctc_range: j.ctc_range || "₹18L - ₹30L PA",
           tech_stack: j.tech_stack || [],
           interview_types: j.interview_types || [],
-          application_url: j.application_url,
+          application_url: j.application_url || "",
           last_date: j.last_date,
           status: j.status,
           created_at: j.created_at,
@@ -129,22 +129,33 @@ export async function syncAndFetchSupabaseJobs(
     // Ignore DB query errors
   }
 
-  // 4. Strict Filtering & Per-Company Capping (Max 2 roles per company, NO Meesho)
+  // 4. Strict Filtering & Per-Company Capping (Max 2 roles per company, NO Meesho across ALL fields)
   const companyCounts = new Map<string, number>();
   const cappedJobs: JobWithCompany[] = [];
 
   for (const j of candidatePool) {
-    const cName = (j.company_name || j.company_slug || "Company").toLowerCase();
+    const cName = (j.company_name || "").toLowerCase();
     const cSlug = (j.company_slug || "").toLowerCase();
+    const cId = (j.company_id || "").toLowerCase();
+    const cDesc = (j.description || "").toLowerCase();
+    const cUrl = (j.application_url || "").toLowerCase();
 
-    // Absolute Purge of Meesho & Legacy Numeric Seed Rows
-    if (cName.includes("meesho") || cSlug.includes("meesho") || /^\d+$/.test(String(j.id))) {
+    // Absolute Purge of Meesho across ALL attributes & Legacy Numeric Seed Rows
+    if (
+      cName.includes("meesho") ||
+      cSlug.includes("meesho") ||
+      cId.includes("meesho") ||
+      cDesc.includes("meesho") ||
+      cUrl.includes("meesho") ||
+      /^\d+$/.test(String(j.id))
+    ) {
       continue;
     }
 
-    const count = companyCounts.get(cName) || 0;
+    const keyName = cName || cSlug || "company";
+    const count = companyCounts.get(keyName) || 0;
     if (count < 2) {
-      companyCounts.set(cName, count + 1);
+      companyCounts.set(keyName, count + 1);
       cappedJobs.push(j);
     }
   }
