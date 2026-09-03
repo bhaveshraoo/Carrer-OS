@@ -18,7 +18,7 @@ import { JobSwipeView } from "@/components/jobs/job-swipe-view";
 import { JobWishlistView } from "@/components/jobs/job-wishlist-view";
 import { TopHiringDrivesCarousel } from "@/components/jobs/top-hiring-carousel";
 import { JobPortalRightSidebar } from "@/components/jobs/right-sidebar";
-import type { JobWithCompany } from "@/lib/jobs/jobs";
+import { FALLBACK_JOBS, type JobWithCompany } from "@/lib/jobs/jobs";
 
 export default function JobPortalDashboardPage() {
   const [activeTab, setActiveTab] = useState<"cards" | "swipe" | "wishlist">("cards");
@@ -51,28 +51,49 @@ export default function JobPortalDashboardPage() {
     try {
       const res = await fetch(`/api/jobs?t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
-      if (data.success && data.jobs) {
-        setJobs(data.jobs);
+      if (data.success && Array.isArray(data.jobs)) {
+        // Double-lock client-side filter: Purge Meesho across all fields
+        let cleanJobs = data.jobs.filter((j: any) => {
+          const name = (j.company_name || "").toLowerCase();
+          const slug = (j.company_slug || "").toLowerCase();
+          const id = (j.company_id || "").toLowerCase();
+          const desc = (j.description || "").toLowerCase();
+          const url = (j.application_url || "").toLowerCase();
+          return (
+            !name.includes("meesho") &&
+            !slug.includes("meesho") &&
+            !id.includes("meesho") &&
+            !desc.includes("meesho") &&
+            !url.includes("meesho") &&
+            !/^\d+$/.test(String(j.id))
+          );
+        });
 
-        if (data.stats) {
-          setStats(data.stats);
-        } else {
-          const uniqueCompanies = new Set(data.jobs.map((j: any) => j.company_id || j.company_name)).size;
-          const internships = data.jobs.filter((j: any) =>
-            j.role.toLowerCase().includes("intern") ||
-            j.domain.toLowerCase().includes("intern") ||
-            j.description.toLowerCase().includes("intern")
-          ).length;
-          setStats({
-            totalJobs: data.jobs.length,
-            totalCompanies: uniqueCompanies,
-            totalInternships: internships,
-            lastUpdated: "Connected",
-          });
+        if (cleanJobs.length < 5) {
+          cleanJobs = FALLBACK_JOBS;
         }
+
+        setJobs(cleanJobs);
+
+        const uniqueCompanies = new Set(cleanJobs.map((j: any) => j.company_id || j.company_name)).size;
+        const internships = cleanJobs.filter((j: any) =>
+          j.role.toLowerCase().includes("intern") ||
+          j.domain.toLowerCase().includes("intern") ||
+          j.description.toLowerCase().includes("intern")
+        ).length;
+
+        setStats({
+          totalJobs: cleanJobs.length,
+          totalCompanies: uniqueCompanies,
+          totalInternships: internships,
+          lastUpdated: "Just now",
+        });
+      } else {
+        setJobs(FALLBACK_JOBS);
       }
     } catch (err) {
       console.error("Error fetching real jobs:", err);
+      setJobs(FALLBACK_JOBS);
     } finally {
       setLoading(false);
     }
