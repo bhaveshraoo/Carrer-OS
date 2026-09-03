@@ -80,7 +80,30 @@ export async function syncAndFetchSupabaseJobs(
       // If DB has at least 4 diverse companies AND the top 10 items contain at least 3 distinct companies, serve DB records.
       // Otherwise, trigger multi-agent fresh fetch below to fix single-company top clutter!
       if (uniqueCompanies >= 4 && top10Companies >= 3) {
-        return dbJobs.map((j: any) => {
+        // Interleave DB jobs round-robin across companies for 100% balanced feed
+        const companyGroupMap = new Map<string, any[]>();
+        for (const j of dbJobs) {
+          const cName = j.company?.name || j.company_name || "Company";
+          const list = companyGroupMap.get(cName) || [];
+          list.push(j);
+          companyGroupMap.set(cName, list);
+        }
+
+        const interleavedDbJobs: any[] = [];
+        let added = true;
+        let rIdx = 0;
+        while (added) {
+          added = false;
+          for (const list of companyGroupMap.values()) {
+            if (rIdx < list.length) {
+              interleavedDbJobs.push(list[rIdx]);
+              added = true;
+            }
+          }
+          rIdx++;
+        }
+
+        return interleavedDbJobs.map((j: any) => {
           const company = j.company || {};
           const metadata = company.metadata || {};
           const tier = metadata.tier || metadata.industry || "Product";

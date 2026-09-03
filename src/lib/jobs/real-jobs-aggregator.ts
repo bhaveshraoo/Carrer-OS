@@ -6,7 +6,7 @@ import { isJobActive, type JobWithCompany } from "./jobs";
 
 let cachedRealJobs: JobWithCompany[] | null = null;
 let lastFetchTimestamp = 0;
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5-minute fresh cache
+const CACHE_TTL_MS = 10 * 1000; // 10-second cache TTL for instant fresh multi-agent updates
 
 /**
  * Multi-Source Multi-Agent Tech Harvester:

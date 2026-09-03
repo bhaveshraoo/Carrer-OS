@@ -126,7 +126,7 @@ ${aiData.benefits.map((b) => `• ${b}`).join("\n")}`;
   let addedAny = true;
   let roundIndex = 0;
 
-  while (result.length < limit && addedAny) {
+  while (result.length < limit && addedAny && roundIndex < 2) {
     addedAny = false;
     for (const [_, jobsList] of companyJobsMap) {
       if (roundIndex < jobsList.length && result.length < limit) {
