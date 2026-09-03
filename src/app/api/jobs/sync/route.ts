@@ -24,9 +24,9 @@ export async function POST() {
       });
     }
 
-    // 1. Wipe out stale old single-company jobs from DB
+    // 1. Wipe out stale old legacy jobs from DB before inserting fresh multi-agent batch
     const nowISO = new Date().toISOString();
-    await supabase.from("jobs").delete().lt("last_date", nowISO);
+    await supabase.from("jobs").delete().neq("id", "0");
 
     // 2. Batch Upsert Companies
     const companyBatch = freshJobs.map((job) => ({

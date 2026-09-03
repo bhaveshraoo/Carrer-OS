@@ -32,6 +32,9 @@ export async function syncAndFetchSupabaseJobs(
   try {
     const legacyIds = Array.from({ length: 35 }, (_, i) => String(i + 1));
     await adminClient.from("jobs").delete().in("id", legacyIds);
+
+    // Purge legacy fallback jobs from DB before inserting fresh multi-agent batch
+    await adminClient.from("jobs").delete().neq("id", "0");
   } catch {
     // Ignore if delete fails
   }
