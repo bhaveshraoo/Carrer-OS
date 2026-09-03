@@ -29,7 +29,15 @@ export async function syncAndFetchSupabaseJobs(
   const adminClient = getAdminSupabaseClient(userClient);
   const nowISO = new Date().toISOString();
 
-  // 1. Fetch user wishlists & targeted company IDs in parallel with active jobs
+  // 1. Always purge legacy numeric IDs (1..35) from DB to prevent stale single-company caching
+  try {
+    const legacyIds = Array.from({ length: 35 }, (_, i) => String(i + 1));
+    await adminClient.from("jobs").delete().in("id", legacyIds);
+  } catch {
+    // Ignore
+  }
+
+  // 2. Fetch user wishlists & targeted company IDs in parallel with active jobs
   let wishlistedJobIds = new Set<string>();
   let targetedCompanyIds = new Set<string>();
 
