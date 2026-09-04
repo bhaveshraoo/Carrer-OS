@@ -51,6 +51,13 @@ export function DashboardOverview({
     if (hour < 12) setGreetingTime("Good Morning");
     else if (hour < 18) setGreetingTime("Good Afternoon");
     else setGreetingTime("Good Evening");
+
+    // 🚀 Background prefetch /api/jobs data on Dashboard load for 0ms Job Portal rendering
+    try {
+      fetch("/api/jobs", { cache: "no-store" }).catch(() => {});
+    } catch {
+      // Ignore background prefetch errors
+    }
   }, []);
 
   const resumeScore = latestResumeScore ?? CANONICAL_SCORES.resume_ats_score;
