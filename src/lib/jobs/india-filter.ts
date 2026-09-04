@@ -1,27 +1,20 @@
 /**
- * Strict location filter to ensure ONLY Indian tech jobs are accepted.
+ * Location filter to accept Indian tech jobs as well as Global/Worldwide Remote roles.
  */
 export function isIndianLocation(locationStr: string): boolean {
-  if (!locationStr) return false;
-  const loc = locationStr.toLowerCase();
+  if (!locationStr) return true;
+  const loc = locationStr.toLowerCase().trim();
 
-  // Exclude explicitly foreign location tags
+  // Exclude explicitly restricted foreign location tags (e.g. US Only, Europe Only)
   const foreignOnlyTags = [
-    "us-",
-    "us ",
-    "usa",
-    "united states",
-    "uk-",
-    "united kingdom",
-    "canada",
-    "germany",
-    "france",
-    "singapore",
-    "australia",
-    "japan",
-    "brazil",
-    "europe",
-    "latam",
+    "us only",
+    "usa only",
+    "united states only",
+    "uk only",
+    "canada only",
+    "germany only",
+    "europe only",
+    "latam only",
   ];
 
   const mentionsForeignOnly = foreignOnlyTags.some((tag) => loc.includes(tag));
@@ -69,6 +62,11 @@ export function isIndianLocation(locationStr: string): boolean {
     "remote (india)",
     "remote - india",
     "india (remote)",
+    "worldwide",
+    "remote",
+    "anywhere",
+    "global",
+    "apac",
   ];
 
   return indianLocations.some((city) => loc.includes(city));
