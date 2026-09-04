@@ -14,6 +14,7 @@ import {
   Tag,
   Crown,
   Lock,
+  Briefcase,
 } from "lucide-react";
 
 export interface AdminSectionItem {
@@ -26,6 +27,7 @@ export interface AdminSectionItem {
 
 export const ALL_ADMIN_SECTIONS: AdminSectionItem[] = [
   { id: "overview", href: "/admin", label: "Admin Overview", icon: LayoutDashboard },
+  { id: "jobs", href: "/admin/jobs", label: "Job Ingestion & Auto-Fetch", icon: Briefcase },
   { id: "analytics", href: "/admin/analytics", label: "System Analytics Hub", icon: BarChart3 },
   { id: "interns", href: "/admin/interns", label: "Active Interns Roster", icon: GraduationCap },
   { id: "employees", href: "/admin/employees", label: "Employee Directory & Access", icon: Users, bossOnly: true },
