@@ -58,24 +58,16 @@ export function DashboardNav({
   const pathname = usePathname();
   const router   = useRouter();
 
-  // 🚀 Auto-prefetch Job Portal route & background fetch /api/jobs data on Dashboard load
-  useEffect(() => {
-    router.prefetch("/dashboard/jobs");
-    try {
-      fetch("/api/jobs", { cache: "no-store" }).catch(() => {});
-    } catch {
-      // Ignore background prefetch errors
-    }
-  }, [router]);
-
-  // Background Prefetcher: Automatically warm up /api/jobs & company routes in background
-  // while candidate is on Dashboard, so when Job Portal is clicked, jobs load instantly with 0ms delay!
+  // 🚀 Auto-prefetch Job Portal & Companies routes on Dashboard load for 0ms instant tab navigation
   useEffect(() => {
     if (typeof window !== "undefined") {
-      // Warm up API cache
-      fetch("/api/jobs", { cache: "force-cache" }).catch(() => {});
-      // Prefetch Next.js page route
       router.prefetch("/dashboard/jobs");
+      router.prefetch("/dashboard/companies");
+      try {
+        fetch("/api/jobs", { cache: "force-cache" }).catch(() => {});
+      } catch {
+        // Ignore background prefetch errors
+      }
     }
   }, [router]);
 

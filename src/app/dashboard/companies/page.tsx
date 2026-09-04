@@ -1,9 +1,81 @@
+import { unstable_cache } from "next/cache";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { table } from "@/lib/supabase/typed-table";
 import { CompanyList, CompanyData } from "@/components/companies/company-list";
 import { SEED_COMPANIES } from "@/lib/companies/seed-data";
-import { CheckCircle2, ShieldCheck, Sparkles, Target } from "lucide-react";
+import { ShieldCheck, Target } from "lucide-react";
 import { redirect } from "next/navigation";
+
+// 🚀 High-Performance Server Cache: Cache static company intelligence for 5 mins across all requests (0ms DB latency)
+const getCachedCompaniesData = unstable_cache(
+  async () => {
+    const publicSupabase = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    const [
+      { data: rawCompanies },
+      { data: rawIntel },
+      { data: rawTopics },
+    ] = await Promise.all([
+      table(publicSupabase, "companies").select("id, name, slug, logo_url, career_page_url, metadata"),
+      table(publicSupabase, "company_intel").select("company_id, hiring_process, required_skills, overview"),
+      table(publicSupabase, "company_dsa_topics").select("company_id, topic"),
+    ]);
+
+    const intelMap: Record<string, { hiring_rounds_count: number; required_skills: string[]; overview?: string | null }> = {};
+    (rawIntel ?? []).forEach((intel) => {
+      intelMap[intel.company_id] = {
+        hiring_rounds_count: (intel.hiring_process ?? []).length,
+        required_skills: intel.required_skills ?? [],
+        overview: intel.overview,
+      };
+    });
+
+    const topicsMap: Record<string, string[]> = {};
+    (rawTopics ?? []).forEach((t) => {
+      if (!topicsMap[t.company_id]) topicsMap[t.company_id] = [];
+      topicsMap[t.company_id].push(t.topic);
+    });
+
+    let list: CompanyData[] = (rawCompanies ?? [])
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((c) => {
+        const intel = intelMap[c.id];
+        return {
+          id: c.id,
+          name: c.name,
+          slug: c.slug,
+          logo_url: c.logo_url,
+          career_page_url: c.career_page_url,
+          metadata: (c.metadata ?? {}) as CompanyData["metadata"],
+          hiring_rounds_count: intel?.hiring_rounds_count ?? 3,
+          required_skills: intel?.required_skills ?? [],
+          top_topics: topicsMap[c.id] ?? [],
+        };
+      });
+
+    if (list.length === 0) {
+      list = SEED_COMPANIES.map((sc) => ({
+        id: sc.id,
+        name: sc.name,
+        slug: sc.slug,
+        logo_url: sc.logo_url,
+        career_page_url: sc.career_page_url,
+        metadata: sc.metadata,
+        hiring_rounds_count: sc.hiring_rounds_count,
+        required_skills: sc.required_skills,
+        top_topics: sc.top_topics,
+      }));
+    }
+
+    return list;
+  },
+  ["global-companies-intelligence-cache-v1"],
+  { revalidate: 300, tags: ["companies"] }
+);
 
 export default async function CompaniesPage() {
   const supabase = await createClient();
@@ -13,70 +85,16 @@ export default async function CompaniesPage() {
 
   if (!user) redirect("/login");
 
-  // Execute all 4 database queries simultaneously in parallel for 5x faster response time
-  const [
-    { data: rawCompanies },
-    { data: rawIntel },
-    { data: rawTopics },
-    { data: targets },
-  ] = await Promise.all([
-    table(supabase, "companies").select("*"),
-    table(supabase, "company_intel").select("*"),
-    table(supabase, "company_dsa_topics").select("*"),
-    table(supabase, "user_company_targets").select("*").eq("user_id", user.id),
+  // Execute cached static company fetch (0ms) & user target query simultaneously
+  const [companies, { data: targets }] = await Promise.all([
+    getCachedCompaniesData(),
+    table(supabase, "user_company_targets").select("company_id").eq("user_id", user.id),
   ]);
 
   const targetedSet: Record<string, boolean> = {};
   (targets ?? []).forEach((t) => {
     targetedSet[t.company_id] = true;
   });
-
-  const intelMap: Record<string, { hiring_rounds_count: number; required_skills: string[]; overview?: string | null }> = {};
-  (rawIntel ?? []).forEach((intel) => {
-    intelMap[intel.company_id] = {
-      hiring_rounds_count: (intel.hiring_process ?? []).length,
-      required_skills: intel.required_skills ?? [],
-      overview: intel.overview,
-    };
-  });
-
-  const topicsMap: Record<string, string[]> = {};
-  (rawTopics ?? []).forEach((t) => {
-    if (!topicsMap[t.company_id]) topicsMap[t.company_id] = [];
-    topicsMap[t.company_id].push(t.topic);
-  });
-
-  let companies: CompanyData[] = (rawCompanies ?? [])
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .map((c) => {
-      const intel = intelMap[c.id];
-      return {
-        id: c.id,
-        name: c.name,
-        slug: c.slug,
-        logo_url: c.logo_url,
-        career_page_url: c.career_page_url,
-        metadata: (c.metadata ?? {}) as CompanyData["metadata"],
-        hiring_rounds_count: intel?.hiring_rounds_count ?? 3,
-        required_skills: intel?.required_skills ?? [],
-        top_topics: topicsMap[c.id] ?? [],
-      };
-    });
-
-  // Fallback to seed data if database is empty so page NEVER renders blank
-  if (companies.length === 0) {
-    companies = SEED_COMPANIES.map((sc) => ({
-      id: sc.id,
-      name: sc.name,
-      slug: sc.slug,
-      logo_url: sc.logo_url,
-      career_page_url: sc.career_page_url,
-      metadata: sc.metadata,
-      hiring_rounds_count: sc.hiring_rounds_count,
-      required_skills: sc.required_skills,
-      top_topics: sc.top_topics,
-    }));
-  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-fade-up">
