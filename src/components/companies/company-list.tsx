@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
@@ -202,6 +202,42 @@ export function CompanyList({
       return true;
     });
   }, [companies, query, selectedTier, selectedType, selectedCity, onlyTargeted, targetedSet]);
+
+  // Progressive YouTube-Style Pagination (6 initial, +6 progressive batching)
+  const [visibleCount, setVisibleCount] = useState(6);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  // Reset visible count to 6 whenever active filters change
+  useEffect(() => {
+    setVisibleCount(6);
+  }, [query, selectedTier, selectedType, selectedCity, onlyTargeted]);
+
+  const visibleCompanies = useMemo(() => {
+    return filtered.slice(0, visibleCount);
+  }, [filtered, visibleCount]);
+
+  const hasMore = visibleCount < filtered.length;
+
+  // IntersectionObserver for seamless scroll progressive loading
+  useEffect(() => {
+    if (!hasMore || !loadMoreRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => Math.min(prev + 6, filtered.length));
+        }
+      },
+      { threshold: 0.1, rootMargin: "250px" }
+    );
+
+    const el = loadMoreRef.current;
+    observer.observe(el);
+
+    return () => {
+      if (el) observer.unobserve(el);
+    };
+  }, [hasMore, filtered.length]);
 
   async function handleOpenMatchModal(company: CompanyData) {
     setSelectedMatchCompany(company);
@@ -492,18 +528,39 @@ export function CompanyList({
           <p className="text-xs text-muted">Try adjusting your search query, tier, or city filters.</p>
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-2 gap-5">
-          {filtered.map((c) => {
-            const isTargeted = !!targetedSet[c.id];
-            return (
-              <TiltCompanyCard
-                key={c.id}
-                company={c}
-                isTargeted={isTargeted}
-                onOpenMatchModal={handleOpenMatchModal}
-              />
-            );
-          })}
+        <div className="space-y-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-2 gap-5">
+            {visibleCompanies.map((c) => {
+              const isTargeted = !!targetedSet[c.id];
+              return (
+                <TiltCompanyCard
+                  key={c.id}
+                  company={c}
+                  isTargeted={isTargeted}
+                  onOpenMatchModal={handleOpenMatchModal}
+                />
+              );
+            })}
+          </div>
+
+          {/* YouTube-Style Progressive Scroll Sentinel & Load Trigger */}
+          {hasMore && (
+            <div ref={loadMoreRef} className="pt-4 text-center space-y-3">
+              <button
+                onClick={() => setVisibleCount((prev) => Math.min(prev + 6, filtered.length))}
+                className="px-6 py-3 rounded-2xl surface border border-orange-500/30 text-xs font-bold text-orange-400 hover:bg-orange-500/10 hover:border-orange-500/50 transition-all flex items-center justify-center gap-2 mx-auto shadow-md active:scale-95"
+              >
+                <Loader2 className="size-4 animate-spin text-orange-400" />
+                Load More Companies ({visibleCompanies.length} of {filtered.length})
+              </button>
+            </div>
+          )}
+
+          {!hasMore && filtered.length > 6 && (
+            <p className="text-center text-xs text-muted font-medium pt-4">
+              ✨ Showing all {filtered.length} matching companies
+            </p>
+          )}
         </div>
       )}
 
