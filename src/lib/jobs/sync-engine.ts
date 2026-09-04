@@ -162,7 +162,14 @@ export async function syncAndFetchSupabaseJobs(
     }
 
     // 5. Interleave jobs by company so adjacent cards alternate company names
-    const finalInterleavedJobs = interleaveByCompany(cappedJobs).slice(0, 30);
+    const seenJobIds = new Set<string>();
+    const deduplicatedCappedJobs = cappedJobs.filter((j) => {
+      if (seenJobIds.has(j.id)) return false;
+      seenJobIds.add(j.id);
+      return true;
+    });
+
+    const finalInterleavedJobs = interleaveByCompany(deduplicatedCappedJobs).slice(0, 30);
 
     // 6. Async seed/upsert multi-company jobs to Supabase DB in background batch
     if (finalInterleavedJobs.length > 0) {

@@ -73,6 +73,14 @@ export default function JobPortalDashboardPage() {
           cleanJobs = FALLBACK_JOBS;
         }
 
+        const seenIds = new Set<string>();
+        cleanJobs = cleanJobs.filter((j: any, idx: number) => {
+          const key = j.id || `job-${idx}`;
+          if (seenIds.has(key)) return false;
+          seenIds.add(key);
+          return true;
+        });
+
         setJobs(cleanJobs);
 
         const uniqueCompanies = new Set(cleanJobs.map((j: any) => j.company_id || j.company_name)).size;

@@ -196,7 +196,7 @@ export function JobCardView({ jobs, onTargetCompanyToggle }: JobCardViewProps) {
 
             return (
               <div
-                key={job.id}
+                key={`${job.id}-${idx}`}
                 onClick={() => setActiveModalJob(job)}
                 className="group relative surface border border-border hover:border-orange-500/40 rounded-3xl overflow-hidden shadow-xs hover:shadow-xl transition-all duration-300 hover:-translate-y-1.5 flex flex-col justify-between cursor-pointer"
               >
