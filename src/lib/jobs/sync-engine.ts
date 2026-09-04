@@ -8,7 +8,7 @@ import { FALLBACK_JOBS, type JobWithCompany } from "./jobs";
  */
 function getAdminSupabaseClient(fallbackClient: SupabaseClient): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (url && serviceKey) {
     return createClient(url, serviceKey);
@@ -49,7 +49,7 @@ function interleaveByCompany(jobsList: JobWithCompany[]): JobWithCompany[] {
 
 /**
  * Fast Job Fetch & Background Sync Engine:
- * 1. Parallel fetches wishlists, target companies, and active jobs with a hard 3s execution deadline.
+ * 1. Parallel fetches wishlists, target companies, and active jobs with an 8s execution window for live API harvesters.
  * 2. Streams multi-company capped tech jobs across Bloomreach, Roblox, Welo, Rubrik, Stripe, Databricks, TCS, Infosys, Google, Microsoft.
  */
 export async function syncAndFetchSupabaseJobs(
@@ -183,7 +183,7 @@ export async function syncAndFetchSupabaseJobs(
           await adminClient.from("companies").upsert(companyBatch, { onConflict: "slug" });
 
           const jobBatch = finalInterleavedJobs.map((job) => ({
-            id: job.id,
+            id: String(job.id),
             company_id: job.company_id,
             role: job.role,
             description: job.description,
@@ -213,7 +213,7 @@ export async function syncAndFetchSupabaseJobs(
     }));
   })();
 
-  // 3-second hard deadline for serverless environments
+  // 8-second execution deadline for live API harvesters
   const timeoutPromise = new Promise<JobWithCompany[]>((resolve) => {
     setTimeout(() => {
       resolve(
@@ -222,7 +222,7 @@ export async function syncAndFetchSupabaseJobs(
           created_at: new Date().toISOString(),
         }))
       );
-    }, 3000);
+    }, 8000);
   });
 
   return Promise.race([fetchPromise, timeoutPromise]);
