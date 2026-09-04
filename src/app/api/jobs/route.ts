@@ -5,14 +5,20 @@ import { syncAndFetchSupabaseJobs } from "@/lib/jobs/sync-engine";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+/**
+ * GET /api/jobs
+ * 100% DB-First Website Endpoint:
+ * Reads directly from Supabase DB `jobs` & `companies` tables with 0 external API calls.
+ */
 export async function GET(request: Request) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
+    // Query Supabase DB directly
     const rawJobs = await syncAndFetchSupabaseJobs(supabase, user?.id);
 
-    // Bulletproof API Guard: Strictly filter out any Meesho or legacy numeric IDs
+    // Filter Meesho out
     const jobs = rawJobs.filter(
       (j) =>
         !j.company_name.toLowerCase().includes("meesho") &&
@@ -42,19 +48,19 @@ export async function GET(request: Request) {
           totalInternships: internships,
           lastUpdated: "Just now",
         },
-        build_version: "v11-stable-production",
+        build_version: "v12-pure-db-first",
       },
       {
         headers: {
           "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-          "X-CareerOS-Build": "v11-stable-production",
+          "X-CareerOS-Build": "v12-pure-db-first",
         },
       }
     );
   } catch (error) {
     console.error("GET /api/jobs error:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to fetch jobs" },
+      { success: false, error: "Failed to fetch jobs from database" },
       { status: 500 }
     );
   }
