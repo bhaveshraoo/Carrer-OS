@@ -148,7 +148,7 @@ export default function AdminJobsManagementPage() {
       if (data.success) {
         notify({
           title: "✅ Auto-Fetch Complete!",
-          body: `Ingested ${data.dbSyncCount || 30} fresh live tech jobs into the marketplace!`,
+          body: data.message || `Ingested ${data.dbSyncCount || 25} fresh jobs! Total active jobs in DB: ${data.totalActiveInDb || '50+'}.`,
           type: "success",
         });
         await loadJobsFromDb();

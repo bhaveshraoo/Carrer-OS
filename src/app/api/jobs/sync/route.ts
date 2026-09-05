@@ -42,7 +42,7 @@ async function handleSync(request: Request) {
 
     const nowISO = new Date().toISOString();
 
-    const futureDate = new Date(Date.now() + 30 * 86400000).toISOString();
+    const defaultDeadline = new Date(Date.now() + 14 * 86400000).toISOString();
 
     // 1. Batch Upsert Companies
     const companyBatch = freshJobs.map((job) => ({
@@ -64,7 +64,7 @@ async function handleSync(request: Request) {
       console.error("Company upsert warning:", cErr);
     }
 
-    // 2. Batch Upsert Jobs
+    // 2. Batch Upsert Jobs without deleting existing active jobs
     const jobBatch = freshJobs.map((job) => ({
       id: String(job.id),
       company_id: job.company_id || `comp-${job.company_slug}`,
@@ -79,7 +79,7 @@ async function handleSync(request: Request) {
       last_date:
         job.last_date && new Date(job.last_date).getTime() > Date.now()
           ? job.last_date
-          : futureDate,
+          : defaultDeadline,
       status: "active",
       created_at: nowISO,
     }));
@@ -90,10 +90,18 @@ async function handleSync(request: Request) {
       console.error("Sync batch upsert error:", jobErr);
     }
 
+    // Query total accumulated active jobs in database
+    const { count: totalActiveInDb } = await supabase
+      .from("jobs")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "active")
+      .gte("last_date", nowISO);
+
     return NextResponse.json({
       success: true,
-      message: `Successfully synchronized ${freshJobs.length} live jobs across Roblox, Databricks, Rubrik, Stripe, Coinbase, Jobicy & Remotive!`,
+      message: `Successfully ingested ${freshJobs.length} fresh jobs! Total accumulated active marketplace jobs in DB: ${totalActiveInDb || freshJobs.length}.`,
       dbSyncCount: freshJobs.length,
+      totalActiveInDb: totalActiveInDb || freshJobs.length,
       jobs: freshJobs,
     });
   } catch (error: any) {

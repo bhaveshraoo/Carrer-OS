@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getReal30IndianJobs } from "./real-jobs-aggregator";
-import { FALLBACK_JOBS, type JobWithCompany } from "./jobs";
+import { FALLBACK_JOBS, isJobActive, type JobWithCompany } from "./jobs";
 
 /**
  * Gets an Admin Supabase Client using SUPABASE_SERVICE_ROLE_KEY if available
@@ -48,11 +48,10 @@ function interleaveByCompany(jobsList: JobWithCompany[]): JobWithCompany[] {
 }
 
 /**
- * Helper to process, filter Meesho, cap max 2 roles per company, and interleave.
+ * Helper to process, filter Meesho, purge expired deadlines, and interleave ALL active jobs without artificial limits.
  */
-function processAndCapJobs(candidatePool: JobWithCompany[], maxCount = 30): JobWithCompany[] {
-  const companyCounts = new Map<string, number>();
-  const cappedJobs: JobWithCompany[] = [];
+function processDbJobs(candidatePool: JobWithCompany[]): JobWithCompany[] {
+  const validJobs: JobWithCompany[] = [];
 
   for (const j of candidatePool) {
     const cName = (j.company_name || "").toLowerCase();
@@ -73,40 +72,29 @@ function processAndCapJobs(candidatePool: JobWithCompany[], maxCount = 30): JobW
       continue;
     }
 
-    const keyName = cName || cSlug || "company";
-    const count = companyCounts.get(keyName) || 0;
-    if (count < 2) {
-      companyCounts.set(keyName, count + 1);
-      cappedJobs.push(j);
+    // Auto-vanish if application deadline date has passed
+    if (j.last_date && !isJobActive(j.last_date)) {
+      continue;
     }
+
+    validJobs.push(j);
   }
 
   // Deduplicate by ID
   const seenJobIds = new Set<string>();
-  const deduplicatedJobs = cappedJobs.filter((j) => {
+  const deduplicatedJobs = validJobs.filter((j) => {
     if (seenJobIds.has(j.id)) return false;
     seenJobIds.add(j.id);
     return true;
   });
 
-  // If capping reduced total below maxCount, relax capping slightly to reach target count
-  if (deduplicatedJobs.length < maxCount) {
-    for (const j of candidatePool) {
-      if (deduplicatedJobs.length >= maxCount) break;
-      if (!seenJobIds.has(j.id) && !j.company_name.toLowerCase().includes("meesho")) {
-        seenJobIds.add(j.id);
-        deduplicatedJobs.push(j);
-      }
-    }
-  }
-
-  return interleaveByCompany(deduplicatedJobs).slice(0, maxCount);
+  return interleaveByCompany(deduplicatedJobs);
 }
 
 /**
  * Fast & Stable Job Fetch Engine:
- * 1. Queries Supabase DB first for active jobs -> Returns in < 30ms with ZERO fluctuation.
- * 2. If DB has < 15 jobs, triggers harvester aggregator + fallbacks to auto-seed DB.
+ * 1. Queries Supabase DB first for active jobs -> Returns ALL active accumulated jobs in < 30ms.
+ * 2. If DB has 0 jobs, triggers harvester aggregator + fallbacks to auto-seed DB.
  */
 export async function syncAndFetchSupabaseJobs(
   userClient: SupabaseClient,
@@ -137,7 +125,7 @@ export async function syncAndFetchSupabaseJobs(
     }
   }
 
-  // 2. DB-FIRST FAST PATH: Read active jobs directly from Supabase DB
+  // 2. DB-FIRST FAST PATH: Read ALL active, non-expired jobs directly from Supabase DB
   try {
     const { data: rawDbJobs } = await userClient
       .from("jobs")
@@ -149,7 +137,7 @@ export async function syncAndFetchSupabaseJobs(
       .gte("last_date", nowISO)
       .order("created_at", { ascending: false });
 
-    if (rawDbJobs && rawDbJobs.length >= 15) {
+    if (rawDbJobs && rawDbJobs.length > 0) {
       const dbCandidates: JobWithCompany[] = rawDbJobs.map((j: any) => {
         const company = j.company || {};
         const metadata = company.metadata || {};
@@ -177,7 +165,7 @@ export async function syncAndFetchSupabaseJobs(
         };
       });
 
-      const processedDbJobs = processAndCapJobs([...dbCandidates, ...FALLBACK_JOBS], 30);
+      const processedDbJobs = processDbJobs([...dbCandidates, ...FALLBACK_JOBS]);
 
       return processedDbJobs.map((j) => ({
         ...j,
@@ -190,16 +178,16 @@ export async function syncAndFetchSupabaseJobs(
     // Fall back to live harvesters if DB query fails
   }
 
-  // 3. SEED PATH (Triggered only when DB has < 15 jobs): Aggregates live jobs and seeds DB
+  // 3. SEED PATH (Triggered only when DB has 0 jobs): Aggregates live jobs and seeds DB
   const rawApiJobs = await getReal30IndianJobs().catch(() => []);
   const candidatePool: JobWithCompany[] = [...rawApiJobs, ...FALLBACK_JOBS];
-  const finalProcessedJobs = processAndCapJobs(candidatePool, 30);
+  const finalProcessedJobs = processDbJobs(candidatePool);
 
   // Background seed to DB
   if (finalProcessedJobs.length > 0) {
     (async () => {
       try {
-        const futureDate = new Date(Date.now() + 30 * 86400000).toISOString();
+        const defaultDeadline = new Date(Date.now() + 14 * 86400000).toISOString();
 
         const companyBatch = finalProcessedJobs.map((job) => ({
           id: job.company_id || `comp-${job.company_slug}`,
@@ -230,7 +218,7 @@ export async function syncAndFetchSupabaseJobs(
           last_date:
             job.last_date && new Date(job.last_date).getTime() > Date.now()
               ? job.last_date
-              : futureDate,
+              : defaultDeadline,
           status: "active",
           created_at: nowISO,
         }));
