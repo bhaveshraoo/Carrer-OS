@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Briefcase,
   RefreshCw,
@@ -298,15 +298,115 @@ export default function AdminJobsManagementPage() {
     }
   }
 
-  // Filter Jobs
-  const filteredJobs = jobs.filter((j) => {
-    const matchesSearch =
-      j.company_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      j.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      j.location.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDomain = selectedDomain === "all" || j.domain === selectedDomain;
-    return matchesSearch && matchesDomain;
-  });
+  const [selectedDateFilter, setSelectedDateFilter] = useState("all");
+  const [viewMode, setViewMode] = useState<"grouped" | "flat">("grouped");
+
+  // Group all jobs date-wise by created_at timestamp
+  const allDateGroups = useMemo(() => {
+    const todayStr = new Date().toISOString().split("T")[0];
+    const map = new Map<string, JobRecord[]>();
+
+    for (const j of jobs) {
+      let dateKey = "Undated";
+      if (j.created_at) {
+        const d = new Date(j.created_at);
+        if (!isNaN(d.getTime())) {
+          dateKey = d.toISOString().split("T")[0];
+        }
+      }
+      const existing = map.get(dateKey) || [];
+      existing.push(j);
+      map.set(dateKey, existing);
+    }
+
+    const sortedKeys = Array.from(map.keys()).sort((a, b) => b.localeCompare(a));
+
+    return sortedKeys.map((dateKey) => {
+      const list = map.get(dateKey) || [];
+      const uniqueCompanies = Array.from(new Set(list.map((j) => j.company_name)));
+      let formattedDate = "Undated / Legacy Ingested";
+      if (dateKey !== "Undated") {
+        const d = new Date(dateKey + "T00:00:00");
+        formattedDate = d.toLocaleDateString("en-US", {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        });
+      }
+
+      return {
+        dateKey,
+        formattedDate,
+        isToday: dateKey === todayStr,
+        count: list.length,
+        companies: uniqueCompanies,
+        jobs: list,
+      };
+    });
+  }, [jobs]);
+
+  // Filter Jobs by search, domain, and selected date
+  const filteredJobs = useMemo(() => {
+    return jobs.filter((j) => {
+      const matchesSearch =
+        j.company_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        j.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        j.location.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesDomain = selectedDomain === "all" || j.domain === selectedDomain;
+      let matchesDate = true;
+      if (selectedDateFilter !== "all") {
+        const jDate = j.created_at ? new Date(j.created_at).toISOString().split("T")[0] : "Undated";
+        matchesDate = jDate === selectedDateFilter;
+      }
+      return matchesSearch && matchesDomain && matchesDate;
+    });
+  }, [jobs, searchQuery, selectedDomain, selectedDateFilter]);
+
+  // Filtered Date Groups for rendering in Grouped View
+  const filteredDateGroups = useMemo(() => {
+    const todayStr = new Date().toISOString().split("T")[0];
+    const map = new Map<string, JobRecord[]>();
+
+    for (const j of filteredJobs) {
+      let dateKey = "Undated";
+      if (j.created_at) {
+        const d = new Date(j.created_at);
+        if (!isNaN(d.getTime())) {
+          dateKey = d.toISOString().split("T")[0];
+        }
+      }
+      const existing = map.get(dateKey) || [];
+      existing.push(j);
+      map.set(dateKey, existing);
+    }
+
+    const sortedKeys = Array.from(map.keys()).sort((a, b) => b.localeCompare(a));
+
+    return sortedKeys.map((dateKey) => {
+      const list = map.get(dateKey) || [];
+      const uniqueCompanies = Array.from(new Set(list.map((j) => j.company_name)));
+      let formattedDate = "Undated / Legacy Ingested";
+      if (dateKey !== "Undated") {
+        const d = new Date(dateKey + "T00:00:00");
+        formattedDate = d.toLocaleDateString("en-US", {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        });
+      }
+
+      return {
+        dateKey,
+        formattedDate,
+        isToday: dateKey === todayStr,
+        count: list.length,
+        companies: uniqueCompanies,
+        jobs: list,
+      };
+    });
+  }, [filteredJobs]);
 
   return (
     <div className="space-y-8 pb-16">
@@ -670,134 +770,370 @@ export default function AdminJobsManagementPage() {
         </div>
       </form>
 
-      {/* Live Ingested Jobs Table Section */}
+      {/* Date-Wise Ingestion History Ledger & Date Filter Section */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <span>Active Marketplace Jobs</span>
-              <span className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-bold text-amber-600">
-                {filteredJobs.length} Jobs
-              </span>
-            </h2>
+            <div className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-amber-600" />
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                Date-Wise Ingestion Ledger &amp; Jobs History
+              </h2>
+            </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Live roles currently available to candidates in the job portal.
+              Full breakdown of daily ingested jobs, company rosters, and addition timestamps.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Search Input */}
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search company, role..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 pl-9 pr-3.5 py-2 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-              />
+          <div className="flex items-center gap-2">
+            {/* View Mode Switcher */}
+            <div className="inline-flex rounded-xl border border-slate-300 dark:border-slate-700 p-1 bg-slate-100 dark:bg-slate-800 text-xs font-bold">
+              <button
+                onClick={() => setViewMode("grouped")}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  viewMode === "grouped"
+                    ? "bg-amber-600 text-white shadow-sm"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                }`}
+              >
+                📅 Date-Wise Grouped
+              </button>
+              <button
+                onClick={() => setViewMode("flat")}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  viewMode === "flat"
+                    ? "bg-amber-600 text-white shadow-sm"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                }`}
+              >
+                📋 Flat Table View
+              </button>
             </div>
-
-            {/* Domain Filter */}
-            <select
-              value={selectedDomain}
-              onChange={(e) => setSelectedDomain(e.target.value)}
-              className="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs font-medium text-slate-900 dark:text-white"
-            >
-              <option value="all">All Domains</option>
-              <option value="Software Engineering">Software Engineering</option>
-              <option value="AI/ML">AI/ML</option>
-              <option value="Full Stack">Full Stack</option>
-              <option value="Systems & Infrastructure">Systems</option>
-            </select>
           </div>
         </div>
 
+        {/* Date Filter Tabs Bar */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
+          <button
+            onClick={() => setSelectedDateFilter("all")}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              selectedDateFilter === "all"
+                ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-sm"
+                : "border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-amber-500"
+            }`}
+          >
+            All Dates ({jobs.length} Total Jobs)
+          </button>
+
+          {allDateGroups.map((group) => {
+            const isActive = selectedDateFilter === group.dateKey;
+            return (
+              <button
+                key={group.dateKey}
+                onClick={() => setSelectedDateFilter(group.dateKey)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                  isActive
+                    ? "bg-amber-600 text-white shadow-sm"
+                    : "border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-amber-500"
+                }`}
+              >
+                <span>{group.formattedDate}</span>
+                <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                  isActive ? "bg-white/20 text-white" : "bg-amber-500/10 text-amber-600"
+                }`}>
+                  +{group.count}
+                </span>
+                {group.isToday && (
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" title="Ingested Today" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Search & Domain Filter Bar */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Filter by company name, role, location..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 pl-9 pr-3.5 py-2 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <select
+              value={selectedDomain}
+              onChange={(e) => setSelectedDomain(e.target.value)}
+              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-medium text-slate-900 dark:text-white"
+            >
+              <option value="all">All Tech Domains</option>
+              <option value="Software Engineering">Software Engineering</option>
+              <option value="AI/ML">AI / ML</option>
+              <option value="Full Stack">Full Stack</option>
+              <option value="Systems & Infrastructure">Systems &amp; Infra</option>
+            </select>
+
+            {(searchQuery || selectedDomain !== "all" || selectedDateFilter !== "all") && (
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setSelectedDomain("all");
+                  setSelectedDateFilter("all");
+                }}
+                className="text-xs font-bold text-amber-600 hover:underline whitespace-nowrap"
+              >
+                Reset Filters
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Loading / Empty States */}
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-12 text-slate-400">
             <RefreshCw className="h-8 w-8 animate-spin mb-3 text-amber-500" />
-            <p className="text-sm font-medium">Loading active database jobs...</p>
+            <p className="text-sm font-medium">Loading date-wise jobs database...</p>
           </div>
-        ) : filteredJobs.length === 0 ? (
+        ) : filteredDateGroups.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
             <Briefcase className="h-10 w-10 text-slate-300 dark:text-slate-700 mb-3" />
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">No Jobs Found</h3>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">No Ingested Jobs Found</h3>
             <p className="text-xs text-slate-500 mt-1 max-w-sm">
-              No matching jobs found in the database. Click "Fetch 30 Jobs Now" above to aggregate fresh live postings!
+              No jobs match the selected date or search filter. Click "Fetch 30 Jobs Now" above to aggregate fresh live postings!
             </p>
           </div>
+        ) : viewMode === "grouped" ? (
+          /* ── 1. DATE-WISE GROUPED VIEW ── */
+          <div className="space-y-6">
+            {filteredDateGroups.map((group) => (
+              <div
+                key={group.dateKey}
+                className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 overflow-hidden shadow-xs"
+              >
+                {/* Date Group Header */}
+                <div className="bg-slate-100 dark:bg-slate-800/80 px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <Calendar className="h-4 w-4 text-amber-600" />
+                    <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                      {group.formattedDate}
+                    </h3>
+                    {group.isToday && (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-extrabold border border-emerald-500/30 flex items-center gap-1">
+                        <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> Today&apos;s Ingestion
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                      +{group.count} Jobs Ingested
+                    </span>
+                    <span className="text-xs text-slate-500 font-medium">
+                      ({group.companies.length} Companies)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Date Group Company Roster Chips Bar */}
+                {group.companies.length > 0 && (
+                  <div className="px-5 py-2.5 bg-white/50 dark:bg-slate-900/40 border-b border-slate-200/60 dark:border-slate-800/60 flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mr-1">
+                      Companies Added:
+                    </span>
+                    {group.companies.map((cName) => (
+                      <span
+                        key={cName}
+                        className="text-[11px] font-semibold px-2.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700/60"
+                      >
+                        🏢 {cName}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Date Group Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider text-[10px] bg-slate-50/50 dark:bg-slate-800/20">
+                        <th className="py-2.5 px-4">Role Title &amp; Company</th>
+                        <th className="py-2.5 px-4">Domain</th>
+                        <th className="py-2.5 px-4">Location</th>
+                        <th className="py-2.5 px-4">CTC Package</th>
+                        <th className="py-2.5 px-4">Added Time</th>
+                        <th className="py-2.5 px-4">Apply URL</th>
+                        <th className="py-2.5 px-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/60 font-medium">
+                      {group.jobs.map((job) => {
+                        const timeStr = job.created_at
+                          ? new Date(job.created_at).toLocaleTimeString("en-US", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "—";
+
+                        return (
+                          <tr
+                            key={job.id}
+                            className="hover:bg-amber-500/5 transition-colors"
+                          >
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2.5">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 font-bold text-xs uppercase">
+                                  {job.company_name.slice(0, 2)}
+                                </div>
+                                <div>
+                                  <p className="font-bold text-slate-900 dark:text-white text-xs">
+                                    {job.role}
+                                  </p>
+                                  <p className="text-[11px] text-slate-500 font-medium">
+                                    {job.company_name}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+
+                            <td className="py-3 px-4">
+                              <span className="inline-block rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                                {job.domain}
+                              </span>
+                            </td>
+
+                            <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
+                              {job.location}
+                            </td>
+
+                            <td className="py-3 px-4 font-bold text-emerald-600 dark:text-emerald-400">
+                              {job.ctc_range}
+                            </td>
+
+                            <td className="py-3 px-4 text-slate-500 text-[11px] font-mono">
+                              🕒 {timeStr}
+                            </td>
+
+                            <td className="py-3 px-4">
+                              <a
+                                href={job.application_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-amber-600 hover:underline font-semibold text-xs"
+                              >
+                                <span>Apply</span>
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            </td>
+
+                            <td className="py-3 px-4 text-right">
+                              <button
+                                onClick={() => handleDeleteJob(job.id, job.role)}
+                                className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-500/10 hover:text-rose-600 transition-colors"
+                                title="Purge Job"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
+          /* ── 2. FLAT TABLE VIEW ── */
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider bg-slate-50/50 dark:bg-slate-800/30">
-                  <th className="py-3 px-4">Company & Role</th>
+                  <th className="py-3 px-4">Company &amp; Role</th>
                   <th className="py-3 px-4">Domain</th>
                   <th className="py-3 px-4">Location</th>
                   <th className="py-3 px-4">CTC Package</th>
+                  <th className="py-3 px-4">Ingestion Date</th>
                   <th className="py-3 px-4">Apply URL</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                {filteredJobs.map((job) => (
-                  <tr
-                    key={job.id}
-                    className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
-                  >
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 font-bold text-xs uppercase">
-                          {job.company_name.slice(0, 2)}
+                {filteredJobs.map((job) => {
+                  const dateStr = job.created_at
+                    ? new Date(job.created_at).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })
+                    : "—";
+
+                  return (
+                    <tr
+                      key={job.id}
+                      className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+                    >
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 font-bold text-xs uppercase">
+                            {job.company_name.slice(0, 2)}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900 dark:text-white text-sm">
+                              {job.role}
+                            </p>
+                            <p className="text-xs text-slate-500 font-medium">
+                              {job.company_name}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-bold text-slate-900 dark:text-white text-sm">
-                            {job.role}
-                          </p>
-                          <p className="text-xs text-slate-500 font-medium">
-                            {job.company_name}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    <td className="py-3.5 px-4">
-                      <span className="inline-block rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-300">
-                        {job.domain}
-                      </span>
-                    </td>
+                      <td className="py-3.5 px-4">
+                        <span className="inline-block rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          {job.domain}
+                        </span>
+                      </td>
 
-                    <td className="py-3.5 px-4 text-slate-600 dark:text-slate-400">
-                      {job.location}
-                    </td>
+                      <td className="py-3.5 px-4 text-slate-600 dark:text-slate-400">
+                        {job.location}
+                      </td>
 
-                    <td className="py-3.5 px-4 font-bold text-emerald-600 dark:text-emerald-400">
-                      {job.ctc_range}
-                    </td>
+                      <td className="py-3.5 px-4 font-bold text-emerald-600 dark:text-emerald-400">
+                        {job.ctc_range}
+                      </td>
 
-                    <td className="py-3.5 px-4">
-                      <a
-                        href={job.application_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-amber-600 hover:underline font-semibold text-xs"
-                      >
-                        <span>Apply</span>
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </td>
+                      <td className="py-3.5 px-4 font-mono text-slate-500 text-xs">
+                        📅 {dateStr}
+                      </td>
 
-                    <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => handleDeleteJob(job.id, job.role)}
-                        className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-500/10 hover:text-rose-600 transition-colors"
-                        title="Purge Job"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      <td className="py-3.5 px-4">
+                        <a
+                          href={job.application_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-amber-600 hover:underline font-semibold text-xs"
+                        >
+                          <span>Apply</span>
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </td>
+
+                      <td className="py-3.5 px-4 text-right">
+                        <button
+                          onClick={() => handleDeleteJob(job.id, job.role)}
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-500/10 hover:text-rose-600 transition-colors"
+                          title="Purge Job"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
