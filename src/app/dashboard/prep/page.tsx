@@ -17,20 +17,27 @@ export default async function PrepPage() {
   let rawQuestions: any[] = [];
 
   try {
-    const [companiesRes, targetsRes, topicsRes, questionsRes] = await Promise.all([
+    const [companiesRes, targetsRes, topicsRes, chunk1Res, chunk2Res] = await Promise.all([
       table(supabase, "companies").select("*"),
       table(supabase, "user_company_targets").select("*").eq("user_id", user.id),
       table(supabase, "company_dsa_topics").select("*"),
       (supabase as any)
         .from("dsa_questions")
-        .select("id, title, topic, difficulty, prompt, solution_javascript, solution_python, solution_cpp, solution_explanation")
-        .limit(500),
+        .select("id, title, topic, difficulty, prompt, solution_explanation")
+        .range(0, 999),
+      (supabase as any)
+        .from("dsa_questions")
+        .select("id, title, topic, difficulty, prompt, solution_explanation")
+        .range(1000, 1999),
     ]);
 
     rawCompanies = companiesRes.data || [];
     targets = targetsRes.data || [];
     allTopics = topicsRes.data || [];
-    rawQuestions = questionsRes.data || [];
+    rawQuestions = [
+      ...(chunk1Res.data || []),
+      ...(chunk2Res.data || []),
+    ];
   } catch (err) {
     console.warn("DSA prep data fetch notice:", err);
   }
@@ -55,19 +62,30 @@ export default async function PrepPage() {
     for (const q of rawQuestions) {
       const list = questionsByTopic[q.topic] || [];
       const roadmapMatch = (q.solution_explanation || "").match(/Roadmaps:\s*([^\n]+)/i);
-      const roadmaps = roadmapMatch
-        ? roadmapMatch[1].split(",").map((s: string) => s.trim().toLowerCase())
-        : ["easy-to-medium"];
+
+      let roadmaps: string[] = [];
+      if (roadmapMatch) {
+        roadmaps = roadmapMatch[1].split(",").map((s: string) => s.trim().toLowerCase());
+      } else {
+        const diff = (q.difficulty || "easy").toLowerCase();
+        roadmaps = [];
+        if (diff === "easy" || diff === "medium") roadmaps.push("easy-to-medium");
+        if (diff === "medium" || diff === "hard") roadmaps.push("medium-to-hard");
+        roadmaps.push("sde");
+        if (["arrays", "strings", "web-development", "sql", "oop-concepts"].includes(q.topic)) roadmaps.push("web-dev");
+        if (["math-number-theory", "matrices", "recursion", "arrays", "dp"].includes(q.topic)) roadmaps.push("ai-ml");
+        if (["oop-concepts", "pseudocode", "basic-programming"].includes(q.topic)) roadmaps.push("lld-oop");
+      }
 
       list.push({
         id: q.id,
         title: q.title,
         topic: q.topic,
-        difficulty: q.difficulty,
+        difficulty: (q.difficulty || "easy").toLowerCase() as "easy" | "medium" | "hard",
         prompt: q.prompt,
-        solution_javascript: q.solution_javascript,
-        solution_python: q.solution_python,
-        solution_cpp: q.solution_cpp,
+        solution_javascript: "",
+        solution_python: "",
+        solution_cpp: "",
         solution_explanation: q.solution_explanation,
         roadmaps,
       });
