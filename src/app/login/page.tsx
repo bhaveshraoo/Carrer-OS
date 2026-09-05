@@ -154,12 +154,40 @@ export default function LoginPage() {
     setError("");
 
     const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+    let { error: signInError } = await supabase.auth.signInWithPassword({
       email: pwEmail,
       password,
     });
 
     if (signInError) {
+      // If error is unconfirmed email, auto-confirm on server and retry!
+      if (
+        signInError.message.toLowerCase().includes("confirm") ||
+        signInError.message.toLowerCase().includes("not confirmed")
+      ) {
+        try {
+          await fetch("/api/auth/register-direct", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: pwEmail, password }),
+          });
+
+          // Retry sign in
+          const { error: retryErr } = await supabase.auth.signInWithPassword({
+            email: pwEmail,
+            password,
+          });
+
+          if (!retryErr) {
+            router.push("/dashboard");
+            router.refresh();
+            return;
+          }
+        } catch {
+          // Ignore auto-confirm retry error
+        }
+      }
+
       setStatus("error");
       setError(
         signInError.message.toLowerCase().includes("invalid")

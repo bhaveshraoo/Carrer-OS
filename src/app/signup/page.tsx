@@ -153,31 +153,45 @@ export default function SignupPage() {
     setStatus("submitting");
     setError("");
 
-    const supabase = createClient();
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email: pwEmail,
-      password,
-      options: {
-        data: { full_name: fullName, username },
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
-      },
-    });
+    try {
+      // 1. Call server API to create pre-confirmed user (0 email sent)
+      const res = await fetch("/api/auth/register-direct", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: pwEmail,
+          password,
+          fullName,
+          username,
+        }),
+      });
 
-    if (signUpError) {
-      setStatus("error");
-      if (signUpError.message.toLowerCase().includes("duplicate") || signUpError.message.includes("23505")) {
-        setError("That username is already taken — try another one.");
-      } else {
-        setError(signUpError.message);
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setStatus("error");
+        setError(json.error || "Failed to create account. Please try again.");
+        return;
       }
-      return;
-    }
 
-    if (data.session) {
+      // 2. Instantly sign in user with password (no email confirmation needed)
+      const supabase = createClient();
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
+        email: pwEmail,
+        password,
+      });
+
+      if (signInErr) {
+        setStatus("error");
+        setError(signInErr.message);
+        return;
+      }
+
+      // 3. Instant redirect to Dashboard!
       router.push("/dashboard");
       router.refresh();
-    } else {
-      setStatus("sent");
+    } catch (err: any) {
+      setStatus("error");
+      setError(err.message || "Failed to register account.");
     }
   }
 
