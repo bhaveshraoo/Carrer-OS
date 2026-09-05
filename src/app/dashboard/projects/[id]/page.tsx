@@ -27,6 +27,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { MOCK_PROJECTS } from "@/lib/projects/data";
+import { useEffect } from "react";
 import { useNotifications } from "@/components/notifications/notification-provider";
 
 export default function ProjectDetailPage() {
@@ -40,8 +41,29 @@ export default function ProjectDetailPage() {
   const [isApplying, setIsApplying] = useState(false);
 
   // Resume state: Auto-fetched from candidate's profile by default or newly uploaded file name
-  const [selectedResumeName, setSelectedResumeName] = useState("Jake_Resume_2026.pdf (ATS Score: 88/100)");
+  const [selectedResumeName, setSelectedResumeName] = useState<string | null>(null);
+  const [hasProfileResume, setHasProfileResume] = useState(false);
   const [isNewUpload, setIsNewUpload] = useState(false);
+
+  useEffect(() => {
+    async function loadResume() {
+      try {
+        const res = await fetch("/api/resume/analyze");
+        const data = await res.json();
+        if (data?.resume && data?.resume?.file_name) {
+          setSelectedResumeName(`${data.resume.file_name} (ATS Score: ${data.ats_score ?? 'Verified'})`);
+          setHasProfileResume(true);
+        } else {
+          setSelectedResumeName(null);
+          setHasProfileResume(false);
+        }
+      } catch {
+        setSelectedResumeName(null);
+        setHasProfileResume(false);
+      }
+    }
+    loadResume();
+  }, []);
 
   const [githubUrl, setGithubUrl] = useState("https://github.com/student_dev");
   const [linkedInUrl, setLinkedInUrl] = useState("https://linkedin.com/in/student_dev");
@@ -170,39 +192,66 @@ export default function ProjectDetailPage() {
                 <FileText className="size-4 text-teal-400" /> 2. Candidate Resume & Proof of Work
               </label>
 
-              {/* Auto-Fetched Resume Status Box */}
-              <div className="surface-2 p-5 rounded-2xl border border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3.5">
-                  <div className="size-11 rounded-xl bg-teal-500/15 text-teal-400 flex items-center justify-center shrink-0">
-                    <Paperclip className="size-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-primary text-sm">{selectedResumeName}</span>
-                      {!isNewUpload && (
-                        <span className="text-[11px] font-bold text-teal-400 bg-teal-500/10 px-2.5 py-0.5 rounded-full border border-teal-500/20">
-                          Auto-Fetched from Profile
-                        </span>
-                      )}
+              {/* Auto-Fetched or Upload Resume Status Box */}
+              {selectedResumeName ? (
+                <div className="surface-2 p-5 rounded-2xl border border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <div className="size-11 rounded-xl bg-teal-500/15 text-teal-400 flex items-center justify-center shrink-0">
+                      <Paperclip className="size-5" />
                     </div>
-                    <p className="text-xs text-muted pt-0.5">
-                      {isNewUpload ? "Custom file attached for this project." : "Active resume from your CareerOS candidate profile."}
-                    </p>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-primary text-sm">{selectedResumeName}</span>
+                        {!isNewUpload && (
+                          <span className="text-[11px] font-bold text-teal-400 bg-teal-500/10 px-2.5 py-0.5 rounded-full border border-teal-500/20">
+                            Auto-Fetched from Profile
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted pt-0.5">
+                        {isNewUpload ? "Custom file attached for this application." : "Active resume from your candidate profile."}
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                {/* Direct File Upload Button */}
-                <label className="px-4 py-2.5 rounded-xl text-xs font-bold surface hover:bg-surface-2 border border-border text-primary flex items-center gap-2 cursor-pointer shrink-0 transition-colors">
-                  <Upload className="size-4 text-orange-500" />
-                  <span>Upload New Resume PDF</span>
-                  <input
-                    type="file"
-                    accept=".pdf,.docx"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                </label>
-              </div>
+                  {/* Direct File Upload Button */}
+                  <label className="px-4 py-2.5 rounded-xl text-xs font-bold surface hover:bg-surface-2 border border-border text-primary flex items-center gap-2 cursor-pointer shrink-0 transition-colors">
+                    <Upload className="size-4 text-orange-500" />
+                    <span>Upload Different Resume</span>
+                    <input
+                      type="file"
+                      accept=".pdf,.docx"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              ) : (
+                <div className="surface-2 p-5 rounded-2xl border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-amber-500/5">
+                  <div className="flex items-center gap-3.5">
+                    <div className="size-11 rounded-xl bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0">
+                      <FileText className="size-5" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-primary text-sm">No Resume Found on Profile</span>
+                      <p className="text-xs text-muted pt-0.5">
+                        Upload your candidate resume (PDF or DOCX) to attach it to your application.
+                      </p>
+                    </div>
+                  </div>
+
+                  <label className="px-5 py-2.5 rounded-xl text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white flex items-center gap-2 cursor-pointer shrink-0 transition-all shadow-md">
+                    <Upload className="size-4" />
+                    <span>Upload Resume PDF</span>
+                    <input
+                      type="file"
+                      accept=".pdf,.docx"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              )}
 
               {/* GitHub & LinkedIn Profiles */}
               <div className="grid sm:grid-cols-2 gap-4 pt-2">

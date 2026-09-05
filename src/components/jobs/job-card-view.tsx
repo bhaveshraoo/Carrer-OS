@@ -23,8 +23,11 @@ import { JobDetailModal } from "./job-detail-modal";
 import { getCompanyLogoUrl } from "@/lib/companies/logo-resolver";
 import { isJobActive, type JobWithCompany } from "@/lib/jobs/jobs";
 
+import { calculateJobMatchScore } from "@/lib/jobs/skill-matching";
+
 interface JobCardViewProps {
   jobs: JobWithCompany[];
+  candidateSkillsText?: string | null;
   onTargetCompanyToggle?: (companyId: string, currentTargeted: boolean) => void;
 }
 
@@ -38,7 +41,7 @@ const COVER_GRADIENTS = [
   "from-indigo-600 via-blue-600 to-cyan-600",
 ];
 
-export function JobCardView({ jobs, onTargetCompanyToggle }: JobCardViewProps) {
+export function JobCardView({ jobs, candidateSkillsText, onTargetCompanyToggle }: JobCardViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [sortBy, setSortBy] = useState<string>("match");
@@ -95,17 +98,21 @@ export function JobCardView({ jobs, onTargetCompanyToggle }: JobCardViewProps) {
     });
 
     if (sortBy === "match") {
-      result = [...result].sort((a, b) => b.role.length - a.role.length);
+      result = [...result].sort((a, b) => {
+        const scoreA = calculateJobMatchScore(candidateSkillsText, a) ?? 0;
+        const scoreB = calculateJobMatchScore(candidateSkillsText, b) ?? 0;
+        return scoreB - scoreA;
+      });
     } else if (sortBy === "newest") {
       result = [...result].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     }
 
     return result;
-  }, [jobs, searchQuery, selectedCategory, selectedWorkMode, selectedExp, sortBy]);
+  }, [jobs, searchQuery, selectedCategory, selectedWorkMode, selectedExp, sortBy, candidateSkillsText]);
 
   return (
     <div className="space-y-6">
-      {/* ─── SEARCH & SORT CONTROLS BAR (Matching Reference Image) ───────────────── */}
+      {/* ─── SEARCH & SORT CONTROLS BAR ───────────────── */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row items-center gap-3">
           {/* Search Input Bar */}
@@ -176,7 +183,7 @@ export function JobCardView({ jobs, onTargetCompanyToggle }: JobCardViewProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredJobs.map((job, idx) => {
             // Calculated skill match score
-            const matchScore = 88 + ((idx * 3) % 9);
+            const matchScore = calculateJobMatchScore(candidateSkillsText, job);
             const coverGradient = COVER_GRADIENTS[idx % COVER_GRADIENTS.length];
             const logoUrl = getCompanyLogoUrl(job.company_name, job.company_slug, job.company_logo_url);
             const initialLetter = job.company_name.charAt(0).toUpperCase();
@@ -208,10 +215,20 @@ export function JobCardView({ jobs, onTargetCompanyToggle }: JobCardViewProps) {
 
                   {/* Top Badges Row */}
                   <div className="flex items-center justify-between z-10">
-                    {/* Match Score Badge (Teal Pill) */}
-                    <span className="px-3 py-1 rounded-full bg-teal-400 text-slate-950 font-black text-xs flex items-center gap-1 shadow-sm">
-                      <Zap className="size-3.5 fill-current" /> {matchScore}% Match
-                    </span>
+                    {/* Match Score Badge (Teal Pill or Upload Resume Pill) */}
+                    {matchScore !== null ? (
+                      <span className="px-3 py-1 rounded-full bg-teal-400 text-slate-950 font-black text-xs flex items-center gap-1 shadow-sm">
+                        <Zap className="size-3.5 fill-current" /> {matchScore}% Match
+                      </span>
+                    ) : (
+                      <Link
+                        href="/dashboard/resume"
+                        onClick={(e) => e.stopPropagation()}
+                        className="px-3 py-1 rounded-full bg-amber-400/90 text-slate-950 font-extrabold text-[11px] flex items-center gap-1 shadow-sm hover:bg-amber-300 transition-colors"
+                      >
+                        Upload Resume
+                      </Link>
+                    )}
 
                     {/* Track Category Badge */}
                     <span className="px-3 py-1 rounded-full bg-black/40 backdrop-blur-md text-white font-extrabold text-[11px] border border-white/20">

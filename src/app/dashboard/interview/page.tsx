@@ -248,6 +248,11 @@ export default function InterviewConfigPage() {
   const [resume, setResume] = useState<{ id: string; file_name: string; status: string; ats_score?: number | null } | null>(null);
   const [resumeLoading, setResumeLoading] = useState(true);
 
+  // Resume selection mode: "profile" vs "temp"
+  const [resumeMode, setResumeMode] = useState<"profile" | "temp">("profile");
+  const [tempResumeName, setTempResumeName] = useState<string | null>(null);
+  const [tempResumeText, setTempResumeText] = useState<string | null>(null);
+
   // Generation state
   const [generating, setGenerating] = useState(false);
 
@@ -274,6 +279,20 @@ export default function InterviewConfigPage() {
     loadResume();
   }, []);
 
+  // Handle temporary resume file upload for trial session
+  const handleTempResumeUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setTempResumeName(file.name);
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const text = evt.target?.result as string;
+        setTempResumeText(text || `Uploaded temporary resume file: ${file.name}`);
+      };
+      reader.readAsText(file);
+    }
+  };
+
   // When preset changes, auto-fill fields
   const handlePresetSelect = (presetId: string) => {
     const preset = ROLE_PRESETS.find((p) => p.id === presetId);
@@ -288,6 +307,16 @@ export default function InterviewConfigPage() {
 
   const handleStartInterview = async () => {
     if (!jobRole.trim() || !companyName.trim()) return;
+
+    // Strict Resume Check: Must have profile resume or temporary resume provided
+    const activeResumeId = resumeMode === "profile" ? resume?.id ?? null : null;
+    const activeTempText = resumeMode === "temp" ? tempResumeText : null;
+
+    if (!activeResumeId && !activeTempText) {
+      alert("A resume is required to start an AI Mock Interview session. Please select your saved account resume or upload a temporary resume for this trial session.");
+      return;
+    }
+
     setGenerating(true);
 
     const tech_stack = techStackInput
@@ -310,7 +339,8 @@ export default function InterviewConfigPage() {
           duration_minutes: durationMinutes,
           language: "English",
           personality,
-          resume_id: resume?.id ?? null,
+          resume_id: activeResumeId,
+          temp_resume_text: activeTempText,
         }),
       });
 
@@ -488,65 +518,125 @@ export default function InterviewConfigPage() {
             </div>
           </div>
 
-          {/* ── STEP 2: Resume Section ── */}
+          {/* ── STEP 2: Resume Section (Mandatory) ── */}
           <div className="p-6 sm:p-8 rounded-3xl surface border border-border shadow-xs space-y-4">
-            <h2 className="font-display text-base font-extrabold text-primary flex items-center gap-2 border-b border-border pb-3">
-              <FileText className="size-4 text-orange-500" /> Step 2 — Your Resume (Used for Interview Calibration)
-            </h2>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-border pb-3">
+              <h2 className="font-display text-base font-extrabold text-primary flex items-center gap-2">
+                <FileText className="size-4 text-orange-500" /> Step 2 — Mandatory Candidate Resume
+              </h2>
+              <span className="text-[10px] font-bold text-teal-400 bg-teal-500/10 px-2.5 py-0.5 rounded-full border border-teal-500/20">
+                Required for Interview Session
+              </span>
+            </div>
 
-            {resumeLoading ? (
-              <div className="flex items-center gap-3 p-4 rounded-2xl surface-2 animate-pulse">
-                <div className="size-10 rounded-xl bg-border" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-3 w-48 bg-border rounded" />
-                  <div className="h-3 w-24 bg-border rounded" />
-                </div>
-              </div>
-            ) : resume ? (
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-orange-500/5 border border-orange-500/20">
-                <div className="flex items-center gap-3">
-                  <div className="size-10 rounded-2xl bg-orange-500/15 text-orange-400 flex items-center justify-center shrink-0">
-                    <FileText className="size-5" />
+            {/* Mode Switcher Buttons */}
+            <div className="flex items-center gap-2 p-1 rounded-2xl surface-2 border border-border max-w-md">
+              <button
+                type="button"
+                onClick={() => setResumeMode("profile")}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all text-center ${
+                  resumeMode === "profile"
+                    ? "bg-orange-500 text-white shadow-xs"
+                    : "text-secondary hover:text-primary"
+                }`}
+              >
+                Saved Profile Resume
+              </button>
+              <button
+                type="button"
+                onClick={() => setResumeMode("temp")}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all text-center ${
+                  resumeMode === "temp"
+                    ? "bg-orange-500 text-white shadow-xs"
+                    : "text-secondary hover:text-primary"
+                }`}
+              >
+                Upload Temporary Resume
+              </button>
+            </div>
+
+            {resumeMode === "profile" ? (
+              resumeLoading ? (
+                <div className="flex items-center gap-3 p-4 rounded-2xl surface-2 animate-pulse">
+                  <div className="size-10 rounded-xl bg-border" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 w-48 bg-border rounded" />
+                    <div className="h-3 w-24 bg-border rounded" />
                   </div>
-                  <div>
-                    <p className="text-xs font-extrabold text-primary">{resume.file_name}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[10px] font-bold text-teal-400 flex items-center gap-1">
-                        <CheckCircle2 className="size-3" />
-                        {resume.status === "analyzed" ? "Analyzed" : "Uploaded"}
-                      </span>
-                      {resume.ats_score && (
-                        <span className="text-[10px] font-extrabold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/20">
-                          ATS Score: {resume.ats_score} / 100
+                </div>
+              ) : resume ? (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-orange-500/5 border border-orange-500/20">
+                  <div className="flex items-center gap-3">
+                    <div className="size-10 rounded-2xl bg-orange-500/15 text-orange-400 flex items-center justify-center shrink-0">
+                      <FileText className="size-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-extrabold text-primary">{resume.file_name}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[10px] font-bold text-teal-400 flex items-center gap-1">
+                          <CheckCircle2 className="size-3" />
+                          {resume.status === "analyzed" ? "Active Account Resume" : "Uploaded"}
                         </span>
-                      )}
+                        {resume.ats_score && (
+                          <span className="text-[10px] font-extrabold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/20">
+                            ATS Score: {resume.ats_score} / 100
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
+                  <Link
+                    href="/dashboard/resume"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-secondary hover:text-primary border border-border px-3 py-1.5 rounded-xl surface-2 transition-all shrink-0"
+                  >
+                    <Upload className="size-3.5" /> Manage Resume
+                  </Link>
                 </div>
-                <Link
-                  href="/dashboard/resume"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-secondary hover:text-primary border border-border px-3 py-1.5 rounded-xl surface-2 transition-all shrink-0"
-                >
-                  <Upload className="size-3.5" /> Upload New Resume
-                </Link>
-              </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30">
+                  <div className="flex items-center gap-3">
+                    <AlertCircle className="size-5 text-amber-500 shrink-0" />
+                    <div>
+                      <p className="text-xs font-extrabold text-primary">No Saved Profile Resume Found</p>
+                      <p className="text-[11px] text-muted font-medium mt-0.5">Upload a resume to your profile or switch to the temporary resume tab above.</p>
+                    </div>
+                  </div>
+                  <Link
+                    href="/dashboard/resume"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-xl transition-all shadow-md shrink-0"
+                  >
+                    <Upload className="size-3.5" /> Upload to Profile
+                  </Link>
+                </div>
+              )
             ) : (
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-orange-500/5 border border-orange-500/20">
-                <div className="flex items-center gap-3">
-                  <div className="size-10 rounded-2xl bg-orange-500/15 text-orange-500 flex items-center justify-center shrink-0">
-                    <AlertCircle className="size-5" />
-                  </div>
+              /* Temporary Resume Upload Tab */
+              <div className="p-5 rounded-2xl surface-2 border border-border space-y-3">
+                <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-extrabold text-primary">No Resume Uploaded</p>
-                    <p className="text-[11px] text-muted font-medium mt-0.5">Upload your resume so Gemini can tailor questions to your specific experience.</p>
+                    <p className="text-xs font-extrabold text-primary">Upload Temporary Session Resume</p>
+                    <p className="text-[11px] text-muted font-medium">Use this one-off resume for this interview trial (will not overwrite profile resume).</p>
                   </div>
+                  {tempResumeName && (
+                    <span className="text-[10px] font-bold text-teal-400 bg-teal-500/10 px-2.5 py-0.5 rounded-full border border-teal-500/20 flex items-center gap-1">
+                      <CheckCircle2 className="size-3" /> Attached
+                    </span>
+                  )}
                 </div>
-                <Link
-                  href="/dashboard/resume"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-xl transition-all shadow-md shadow-orange-500/20 shrink-0"
-                >
-                  <Upload className="size-3.5" /> Upload Resume
-                </Link>
+
+                <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-border hover:border-orange-500/50 rounded-2xl cursor-pointer surface transition-all">
+                  <Upload className="size-6 text-orange-500 mb-2" />
+                  <span className="text-xs font-bold text-primary">
+                    {tempResumeName ? tempResumeName : "Click to browse & attach PDF / DOCX resume"}
+                  </span>
+                  <span className="text-[10px] text-muted mt-1">One-time trial session upload</span>
+                  <input
+                    type="file"
+                    accept=".pdf,.docx,.txt"
+                    onChange={handleTempResumeUpload}
+                    className="hidden"
+                  />
+                </label>
               </div>
             )}
 

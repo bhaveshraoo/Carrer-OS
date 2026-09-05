@@ -45,12 +45,51 @@ const CATEGORIES = [
   "Open Source",
 ];
 
+import { useEffect } from "react";
+
 export default function ProjectsMarketplacePage() {
   const { notify } = useNotifications();
   const [activeTab, setActiveTab] = useState<"marketplace" | "my_applications">("marketplace");
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [sortBy, setSortBy] = useState<"latest" | "popular" | "starting_soon" | "highest_match">("highest_match");
+  const [hasResume, setHasResume] = useState(false);
+  const [candidateSkillsText, setCandidateSkillsText] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function checkResume() {
+      try {
+        const res = await fetch("/api/resume/analyze");
+        const data = await res.json();
+        if (data?.resume && data?.resume?.status === "analyzed") {
+          setHasResume(true);
+          const report = data.report || {};
+          const skills = [
+            ...(report.skills || []),
+            ...(report.keywords || []),
+            data.resume.raw_text || "",
+          ].join(" ");
+          setCandidateSkillsText(skills);
+        } else {
+          setHasResume(false);
+        }
+      } catch {
+        setHasResume(false);
+      }
+    }
+    checkResume();
+  }, []);
+
+  const calculateProjectMatch = (techStack: string[], category: string): number | null => {
+    if (!hasResume || !candidateSkillsText) return null;
+    const norm = candidateSkillsText.toLowerCase();
+    let count = 0;
+    for (const tech of techStack) {
+      if (norm.includes(tech.toLowerCase())) count++;
+    }
+    const ratio = techStack.length > 0 ? count / techStack.length : 0.5;
+    return Math.max(52, Math.min(98, Math.round(ratio * 50 + 48)));
+  };
 
   // Dynamic Applications state (starts empty for fresh accounts)
   const [userApplications, setUserApplications] = useState<any[]>(() => {
@@ -83,7 +122,11 @@ export default function ProjectsMarketplacePage() {
 
     return matchesSearch && matchesCategory;
   }).sort((a, b) => {
-    if (sortBy === "highest_match") return (b.matchPercentage || 0) - (a.matchPercentage || 0);
+    if (sortBy === "highest_match") {
+      const matchA = calculateProjectMatch(a.techStack, a.category) ?? 0;
+      const matchB = calculateProjectMatch(b.techStack, b.category) ?? 0;
+      return matchB - matchA;
+    }
     if (sortBy === "latest") return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
     if (sortBy === "starting_soon") return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
     return 0;
@@ -399,11 +442,25 @@ export default function ProjectsMarketplacePage() {
                   <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent" />
 
                   {/* Match Badge */}
-                  {project.matchPercentage && (
-                    <div className="absolute top-3 left-3 bg-teal-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1">
-                      <Sparkles className="size-3" /> {project.matchPercentage}% Match
-                    </div>
-                  )}
+                  {(() => {
+                    const matchScore = calculateProjectMatch(project.techStack, project.category);
+                    if (matchScore !== null) {
+                      return (
+                        <div className="absolute top-3 left-3 bg-teal-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1">
+                          <Sparkles className="size-3" /> {matchScore}% Match
+                        </div>
+                      );
+                    } else {
+                      return (
+                        <Link
+                          href="/dashboard/resume"
+                          className="absolute top-3 left-3 bg-amber-400 text-slate-950 text-[11px] font-extrabold px-3 py-1 rounded-full shadow-md hover:bg-amber-300 transition-colors"
+                        >
+                          Upload Resume
+                        </Link>
+                      );
+                    }
+                  })()}
 
                   {/* Category Pill */}
                   <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-white/20">

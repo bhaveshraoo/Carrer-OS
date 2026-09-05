@@ -20,10 +20,15 @@ import { TopHiringDrivesCarousel } from "@/components/jobs/top-hiring-carousel";
 import { JobPortalRightSidebar } from "@/components/jobs/right-sidebar";
 import { FALLBACK_JOBS, type JobWithCompany } from "@/lib/jobs/jobs";
 
+import Link from "next/link";
+import { AlertCircle } from "lucide-react";
+
 export default function JobPortalDashboardPage() {
   const [activeTab, setActiveTab] = useState<"cards" | "swipe" | "wishlist">("cards");
   const [jobs, setJobs] = useState<JobWithCompany[]>([]);
   const [loading, setLoading] = useState(true);
+  const [candidateSkillsText, setCandidateSkillsText] = useState<string | null>(null);
+  const [hasResume, setHasResume] = useState<boolean>(false);
   const [stats, setStats] = useState({
     totalJobs: 0,
     totalCompanies: 0,
@@ -45,6 +50,31 @@ export default function JobPortalDashboardPage() {
       setFactIndex((prev) => (prev + 1) % CAREER_OS_FACTS.length);
     }, 4000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    async function checkUserResume() {
+      try {
+        const res = await fetch("/api/resume/analyze");
+        const data = await res.json();
+        if (data?.resume && data?.resume?.status === "analyzed") {
+          setHasResume(true);
+          const report = data.report || {};
+          const skills = [
+            ...(report.skills || []),
+            ...(report.keywords || []),
+            data.resume.raw_text || "",
+          ].join(" ");
+          setCandidateSkillsText(skills);
+        } else {
+          setHasResume(false);
+          setCandidateSkillsText(null);
+        }
+      } catch {
+        setHasResume(false);
+      }
+    }
+    checkUserResume();
   }, []);
 
   const fetchJobs = async () => {
@@ -113,7 +143,26 @@ export default function JobPortalDashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-fade-in pb-16">
-      {/* ─── HERO HEADER CARD (Matches Authentic CareerOS Surface Hero) ────────────────────────── */}
+      {/* Top Banner Alert if User has no Resume */}
+      {!hasResume && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="size-5 text-amber-500 shrink-0" />
+            <div>
+              <h4 className="font-bold text-sm text-primary">Personalized Job Matching Disabled</h4>
+              <p className="text-xs text-secondary">Upload your resume to get real-time AI skill match percentages for every opening.</p>
+            </div>
+          </div>
+          <Link
+            href="/dashboard/resume"
+            className="px-4 py-2 rounded-xl bg-orange-500 text-white font-bold text-xs shrink-0 hover:bg-orange-600 transition-colors shadow-sm"
+          >
+            Upload Resume
+          </Link>
+        </div>
+      )}
+
+      {/* ─── HERO HEADER CARD ────────────────────────── */}
       <div className="relative overflow-hidden p-8 md:p-10 rounded-3xl surface border border-orange-500/30 shadow-sm space-y-6">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
           <div className="space-y-3 max-w-3xl">
@@ -122,7 +171,7 @@ export default function JobPortalDashboardPage() {
               <Sparkles className="size-3.5 text-orange-500" /> CareerOS Projects &amp; Jobs Hub
             </div>
 
-            {/* Bold Headline with Highlighted Accent Text */}
+            {/* Bold Headline */}
             <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-primary leading-tight">
               Real-World Tech Jobs &amp; <span className="text-orange-500">Verified Teams</span>
             </h1>
@@ -134,9 +183,12 @@ export default function JobPortalDashboardPage() {
 
           {/* Top Right Orange Filled Action Pill */}
           <div className="shrink-0 self-start lg:self-center">
-            <button className="px-5 py-2.5 rounded-full bg-orange-500 text-white font-extrabold text-xs shadow-sm hover:brightness-110 hover:scale-105 transition-all flex items-center gap-2">
+            <Link
+              href="/dashboard/projects/leaderboard"
+              className="px-5 py-2.5 rounded-full bg-orange-500 text-white font-extrabold text-xs shadow-sm hover:brightness-110 hover:scale-105 transition-all flex items-center gap-2"
+            >
               <Award className="size-4" /> Leaderboard &amp; Top Hiring Drives
-            </button>
+            </Link>
           </div>
         </div>
 
@@ -269,7 +321,7 @@ export default function JobPortalDashboardPage() {
         ) : (
           <div>
             {activeTab === "cards" && (
-              <JobCardView jobs={jobs} onTargetCompanyToggle={fetchJobs} />
+              <JobCardView jobs={jobs} candidateSkillsText={candidateSkillsText} onTargetCompanyToggle={fetchJobs} />
             )}
 
             {activeTab === "swipe" && (
