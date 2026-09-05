@@ -66,8 +66,11 @@ async function handleCronJob(request: Request) {
         !/^\d+$/.test(String(j.id))
     );
 
+    const futureDate = new Date(Date.now() + 30 * 86400000).toISOString();
+
     // 4. Batch Upsert Companies
     const companyBatch = freshJobs.map((job) => ({
+      id: job.company_id || `comp-${job.company_slug}`,
       name: job.company_name,
       slug: job.company_slug,
       logo_url: job.company_logo_url,
@@ -88,7 +91,7 @@ async function handleCronJob(request: Request) {
     // 5. Batch Upsert Jobs with fresh created_at timestamp
     const jobBatch = freshJobs.map((job) => ({
       id: String(job.id),
-      company_id: job.company_id,
+      company_id: job.company_id || `comp-${job.company_slug}`,
       role: job.role,
       description: job.description,
       domain: job.domain,
@@ -97,7 +100,10 @@ async function handleCronJob(request: Request) {
       tech_stack: job.tech_stack,
       interview_types: job.interview_types,
       application_url: job.application_url,
-      last_date: job.last_date,
+      last_date:
+        job.last_date && new Date(job.last_date).getTime() > Date.now()
+          ? job.last_date
+          : futureDate,
       status: "active",
       created_at: nowISO,
     }));
