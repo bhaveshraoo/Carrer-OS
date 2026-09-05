@@ -56,8 +56,15 @@ export interface AdminUserAccount {
   createdAt: string;
 }
 
-export const BOSS_EMAIL = "bhaveshy9654@gmail.com";
-export const BOSS_PASSCODE = "raobhaw@5678";
+export const BOSS_EMAIL =
+  process.env.NEXT_PUBLIC_ADMIN_BOSS_EMAIL ||
+  process.env.ADMIN_BOSS_EMAIL ||
+  "bhaveshy9654@gmail.com";
+
+export const BOSS_PASSCODE =
+  process.env.NEXT_PUBLIC_ADMIN_BOSS_PASSCODE ||
+  process.env.ADMIN_BOSS_PASSCODE ||
+  "raobhaw@5678";
 
 export const BOSS_ACCOUNT: AdminUserAccount = {
   id: "boss-001",
