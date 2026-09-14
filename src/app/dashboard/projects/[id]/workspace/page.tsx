@@ -142,7 +142,7 @@ export default function TeamWorkspacePage() {
   const revenueInfo = MOCK_REVENUE_SHARES[0];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-fade-up">
+    <div className="w-full space-y-8 animate-fade-up">
 
       {/* Back Link */}
       <Link

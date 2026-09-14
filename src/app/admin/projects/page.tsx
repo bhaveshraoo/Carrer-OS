@@ -140,8 +140,12 @@ export default function AdminProjectsPage() {
   const [teamSize, setTeamSize] = useState(6);
   const [techStackInput, setTechStackInput] = useState("Next.js, TypeScript, TailwindCSS, OpenAI");
   const [domainsInput, setDomainsInput] = useState("Frontend, Backend, AI/ML, UI UX");
-  const [teamLeaderName, setTeamLeaderName] = useState("Aarav Gupta");
+  const [managerName, setManagerName] = useState("Vikramaditya Roy (Handles 6 SaaS Projects)");
+  const [projectManagerName, setProjectManagerName] = useState("Bhavesh Rao (Dedicated PM)");
+  const [teamLeaderName, setTeamLeaderName] = useState("Ananya Roy");
   const [mentorName, setMentorName] = useState("Dr. Vikram Sharma");
+  const [gitRepositoryUrl, setGitRepositoryUrl] = useState("https://github.com/careeros-org/new-saas-project");
+  const [attendanceMeetingUrl, setAttendanceMeetingUrl] = useState("https://meet.google.com/abc-defg-hij");
 
   const detail = selectedProject
     ? (PROJECT_DETAILS[selectedProject.id] ?? DEFAULT_DETAIL)
@@ -168,6 +172,24 @@ export default function AdminProjectsPage() {
       requiredSkills: ["Next.js", "TypeScript", "TailwindCSS"],
       techStack: techStackInput.split(",").map((s) => s.trim()),
       domainsRequired: domainsInput.split(",").map((s) => s.trim()) as Project["domainsRequired"],
+      managerName,
+      projectManagerName,
+      gitRepositoryUrl,
+      attendanceMeetingUrl,
+      teams: [
+        {
+          id: `team-1-${Date.now()}`,
+          projectId: `proj-${Date.now()}`,
+          teamName: "Team 1 - Core Development",
+          teamLeaderName: teamLeaderName,
+          teamLeaderEmail: `${teamLeaderName.toLowerCase().replace(/\s+/g, ".")}@careeros.in`,
+          maxSeats: Number(teamSize),
+          filledSeats: 1,
+          members: [
+            { id: "tl-1", name: teamLeaderName, email: `${teamLeaderName.toLowerCase().replace(/\s+/g, ".")}@careeros.in`, domain: "Full Stack", role: "Team Leader (TL)", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&q=80" },
+          ],
+        },
+      ],
       rewards: [
         "Verified 3-Month Internship Certificate & LOR",
         "5% Equal Revenue Share on Product Commercial Sales",
@@ -179,7 +201,7 @@ export default function AdminProjectsPage() {
     };
     setProjects([newProj, ...projects]);
     setShowCreateModal(false);
-    notify({ type: "success", icon: "🚀", title: "New Project Published!", body: `"${title}" published with ${teamSize - 1} open seats!`, autoDismiss: 4000 });
+    notify({ type: "success", icon: "🚀", title: "New Project Published!", body: `"${title}" published with Manager ${managerName} & PM ${projectManagerName}!`, autoDismiss: 4000 });
   }
 
   function handleDeleteProject(id: string, e: React.MouseEvent) {
@@ -252,8 +274,9 @@ export default function AdminProjectsPage() {
                         {p.category}
                       </span>
                     </div>
-                    <p className="text-xs text-muted">
-                      TL: <strong className="text-primary">{p.teamLeader?.name ?? "Aarav Gupta"}</strong>
+                    <p className="text-xs text-muted flex items-center gap-2 flex-wrap">
+                      <span>Manager: <strong className="text-primary">{p.managerName ?? "Vikramaditya Roy"}</strong></span>
+                      <span>· PM: <strong className="text-orange-400">{p.projectManagerName ?? "Bhavesh Rao"}</strong></span>
                     </p>
                     {/* Mini progress bar */}
                     <div className="flex items-center gap-2">
@@ -499,6 +522,36 @@ export default function AdminProjectsPage() {
                 <div className="space-y-1">
                   <label className="font-bold text-primary">Estimated Product Value</label>
                   <input type="text" value={estimatedProductValue} onChange={(e) => setEstimatedProductValue(e.target.value)} required
+                    className="w-full h-10 px-3.5 rounded-xl surface-2 border border-border text-xs text-primary focus:outline-none" />
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-primary">Assigned Manager (Handles 5-10 Projects)</label>
+                  <input type="text" value={managerName} onChange={(e) => setManagerName(e.target.value)} required
+                    placeholder="e.g. Vikramaditya Roy"
+                    className="w-full h-10 px-3.5 rounded-xl surface-2 border border-border text-xs text-primary focus:outline-none" />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-primary">Assigned Project Manager (1 Project PM)</label>
+                  <input type="text" value={projectManagerName} onChange={(e) => setProjectManagerName(e.target.value)} required
+                    placeholder="e.g. Bhavesh Rao"
+                    className="w-full h-10 px-3.5 rounded-xl surface-2 border border-border text-xs text-primary focus:outline-none" />
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-primary">Project GitHub Repository URL</label>
+                  <input type="text" value={gitRepositoryUrl} onChange={(e) => setGitRepositoryUrl(e.target.value)} required
+                    placeholder="https://github.com/..."
+                    className="w-full h-10 px-3.5 rounded-xl surface-2 border border-border text-xs text-primary focus:outline-none" />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-primary">Daily Standup Google Meet URL</label>
+                  <input type="text" value={attendanceMeetingUrl} onChange={(e) => setAttendanceMeetingUrl(e.target.value)} required
+                    placeholder="https://meet.google.com/..."
                     className="w-full h-10 px-3.5 rounded-xl surface-2 border border-border text-xs text-primary focus:outline-none" />
                 </div>
               </div>

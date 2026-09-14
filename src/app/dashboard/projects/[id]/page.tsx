@@ -88,16 +88,39 @@ export default function ProjectDetailPage() {
     }
   }
 
-  function handleApplySubmit(e: React.FormEvent) {
+  async function handleApplySubmit(e: React.FormEvent) {
     e.preventDefault();
     setApplied(true);
     setIsApplying(false);
 
+    try {
+      const appPayload = {
+        id: `app-${Date.now()}`,
+        projectId: project.id,
+        applicantName: "New Candidate",
+        email: "candidate@careeros.com",
+        domain: selectedDomain,
+        experience: availability || "15 Hours / Week",
+        githubUrl: githubUrl || "https://github.com",
+        resumeUrl: selectedResumeName || "#",
+        status: "under_review",
+        appliedAt: new Date().toISOString().split("T")[0],
+      };
+
+      await fetch("/api/projects/applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(appPayload),
+      });
+    } catch (err) {
+      console.error("Failed to submit application to DB:", err);
+    }
+
     notify({
       type: "success",
       icon: "🚀",
-      title: "Application Submitted to Team Leader!",
-      body: `Applied for ${selectedDomain} domain on ${project.title}. Team Leader will review your pitch and schedule an interview.`,
+      title: "Application Submitted to PM & Team Leader!",
+      body: `Applied for ${selectedDomain} domain on ${project.title}. PM & Team Leader will review your pitch and schedule an interview.`,
       autoDismiss: 4500,
     });
   }
@@ -105,7 +128,7 @@ export default function ProjectDetailPage() {
   // ── SEAMLESS FULL-PAGE APPLICATION VIEW ──
   if (isApplying) {
     return (
-      <div className="max-w-4xl mx-auto space-y-8 animate-fade-up">
+      <div className="w-full space-y-8 animate-fade-up">
         {/* Top Back Navigation */}
         <button
           onClick={() => setIsApplying(false)}
@@ -354,7 +377,7 @@ export default function ProjectDetailPage() {
 
   // ── STANDARD PROJECT DETAIL OVERVIEW PAGE VIEW ──
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-fade-up">
+    <div className="w-full space-y-8 animate-fade-up">
 
       {/* Back Link */}
       <Link
@@ -374,6 +397,17 @@ export default function ProjectDetailPage() {
               </span>
               <span className="text-xs font-bold text-teal-400 bg-teal-500/15 px-3 py-1 rounded-full border border-teal-500/30 flex items-center gap-1">
                 <CheckCircle2 className="size-3.5" /> {project.matchPercentage}% Skill Match
+              </span>
+              <span className="text-xs font-bold text-purple-400 bg-purple-500/15 px-3 py-1 rounded-full border border-purple-500/30 flex items-center gap-1">
+                <Award className="size-3.5" /> 🎯 Seniority: {project.seniorityTag || (
+                  project.difficulty === "Beginner"
+                    ? "Freshers / Entry Level"
+                    : project.difficulty === "Intermediate"
+                    ? "Junior Intern"
+                    : project.difficulty === "Advanced"
+                    ? "Senior / Lead Track"
+                    : "Architect / PM Level"
+                )}
               </span>
             </div>
 

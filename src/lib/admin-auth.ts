@@ -40,7 +40,7 @@ export const ALL_ADMIN_SECTIONS: AdminSectionItem[] = [
   { id: "revenue", href: "/admin/revenue", label: "Revenue Ledger (5%)", icon: DollarSign, bossOnly: true },
   { id: "broadcast", href: "/admin/broadcast", label: "Cohort Broadcasts", icon: Bell },
   { id: "coupons", href: "/admin/coupons", label: "Promo Coupons", icon: Tag },
-  { id: "users", href: "/admin/users", label: "Owner Tag Manager", icon: Crown, bossOnly: true },
+  { id: "users", href: "/admin/users", label: "Registered Users Directory", icon: Users },
   { id: "audit", href: "/admin/audit", label: "Security Audit Trail", icon: Lock },
 ];
 

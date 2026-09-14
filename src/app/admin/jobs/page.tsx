@@ -96,6 +96,18 @@ export default function AdminJobsManagementPage() {
   async function loadJobsFromDb() {
     setIsLoading(true);
     try {
+      const res = await fetch("/api/admin/jobs");
+      const apiData = await res.json();
+      if (apiData.success && Array.isArray(apiData.jobs) && apiData.jobs.length > 0) {
+        setJobs(apiData.jobs);
+        setIsLoading(false);
+        return;
+      }
+    } catch (apiErr) {
+      console.warn("API admin jobs fetch warning, trying Supabase DB directly:", apiErr);
+    }
+
+    try {
       const supabase = createClient();
       const { data, error } = await supabase
         .from("jobs")
@@ -148,10 +160,14 @@ export default function AdminJobsManagementPage() {
       if (data.success) {
         notify({
           title: "✅ Auto-Fetch Complete!",
-          body: data.message || `Ingested ${data.dbSyncCount || 25} fresh jobs! Total active jobs in DB: ${data.totalActiveInDb || '50+'}.`,
+          body: data.message || `Ingested ${data.dbSyncCount || 25} fresh jobs! Total active jobs: ${data.totalActiveInDb || '50+'}.`,
           type: "success",
         });
-        await loadJobsFromDb();
+        if (Array.isArray(data.jobs) && data.jobs.length > 0) {
+          setJobs(data.jobs);
+        } else {
+          await loadJobsFromDb();
+        }
       } else {
         notify({
           title: "❌ Ingestion Failed",
@@ -211,31 +227,18 @@ export default function AdminJobsManagementPage() {
 
     setIsPublishing(true);
     try {
-      const supabase = createClient();
       const compSlug = formCompany.toLowerCase().replace(/[^a-z0-9]+/g, "-");
       const compId = `comp-${compSlug}`;
-
-      // 1. Upsert Company
-      await (supabase as any).from("companies").upsert(
-        {
-          id: compId,
-          name: formCompany,
-          slug: compSlug,
-          metadata: { tier: "Product Tier 1", verified: true, manual_added: true },
-        },
-        { onConflict: "slug" }
-      );
-
-      // 2. Insert Job
       const newJobId = `job-manual-${Date.now()}`;
       const techStackArr = formTechStack.split(",").map((s) => s.trim()).filter(Boolean);
       const roundsArr = formRounds.split(",").map((s) => s.trim()).filter(Boolean);
 
-      const { error: jobErr } = await (supabase as any).from("jobs").insert({
+      const newJobPayload = {
         id: newJobId,
         company_id: compId,
+        company_name: formCompany,
+        company_slug: compSlug,
         role: formRole,
-        description: `📌 JOB OVERVIEW\n${formCompany} is hiring a ${formRole} (${formDomain}) to join their engineering team in ${formLocation}.\n\n🎯 LOCATION: ${formLocation}\n💼 CTC PACKAGE: ${formCtc}`,
         domain: formDomain,
         location: formLocation,
         ctc_range: formCtc,
@@ -243,12 +246,18 @@ export default function AdminJobsManagementPage() {
         interview_types: roundsArr,
         application_url: formUrl,
         last_date: new Date(formLastDate).toISOString(),
-        status: "active",
         created_at: new Date().toISOString(),
-      });
+      };
 
-      if (jobErr) {
-        throw new Error(jobErr.message);
+      const res = await fetch("/api/admin/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newJobPayload),
+      });
+      const resData = await res.json();
+
+      if (!resData.success) {
+        throw new Error(resData.error || "Failed to publish job");
       }
 
       notify({
@@ -278,11 +287,13 @@ export default function AdminJobsManagementPage() {
     if (!confirm(`Are you sure you want to purge job "${roleName}"?`)) return;
 
     try {
-      const supabase = createClient();
-      const { error } = await supabase.from("jobs").delete().eq("id", jobId);
+      const res = await fetch(`/api/admin/jobs?id=${encodeURIComponent(jobId)}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
 
-      if (error) {
-        notify({ title: "❌ Delete Failed", body: error.message, type: "error" });
+      if (!data.success) {
+        notify({ title: "❌ Delete Failed", body: data.error || "Failed to delete job", type: "error" });
         return;
       }
 
@@ -300,6 +311,23 @@ export default function AdminJobsManagementPage() {
 
   const [selectedDateFilter, setSelectedDateFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"grouped" | "flat">("grouped");
+
+  function formatDateKey(dateKey: string) {
+    if (dateKey === "Undated") return "Undated / Legacy Ingested";
+    const parts = dateKey.split("-");
+    if (parts.length !== 3) return dateKey;
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    if (isNaN(year) || isNaN(month) || isNaN(day)) return dateKey;
+    const d = new Date(year, month, day);
+    return d.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
 
   // Group all jobs date-wise by created_at timestamp
   const allDateGroups = useMemo(() => {
@@ -324,20 +352,10 @@ export default function AdminJobsManagementPage() {
     return sortedKeys.map((dateKey) => {
       const list = map.get(dateKey) || [];
       const uniqueCompanies = Array.from(new Set(list.map((j) => j.company_name)));
-      let formattedDate = "Undated / Legacy Ingested";
-      if (dateKey !== "Undated") {
-        const d = new Date(dateKey + "T00:00:00");
-        formattedDate = d.toLocaleDateString("en-US", {
-          weekday: "short",
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        });
-      }
 
       return {
         dateKey,
-        formattedDate,
+        formattedDate: formatDateKey(dateKey),
         isToday: dateKey === todayStr,
         count: list.length,
         companies: uniqueCompanies,
@@ -386,20 +404,10 @@ export default function AdminJobsManagementPage() {
     return sortedKeys.map((dateKey) => {
       const list = map.get(dateKey) || [];
       const uniqueCompanies = Array.from(new Set(list.map((j) => j.company_name)));
-      let formattedDate = "Undated / Legacy Ingested";
-      if (dateKey !== "Undated") {
-        const d = new Date(dateKey + "T00:00:00");
-        formattedDate = d.toLocaleDateString("en-US", {
-          weekday: "short",
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        });
-      }
 
       return {
         dateKey,
-        formattedDate,
+        formattedDate: formatDateKey(dateKey),
         isToday: dateKey === todayStr,
         count: list.length,
         companies: uniqueCompanies,

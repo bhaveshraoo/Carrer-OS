@@ -62,7 +62,7 @@ Bloomreach is hiring a Senior Software Engineer to build scalable search & perso
     application_url: "https://bloomreach.com/careers",
     last_date: new Date(Date.now() + 30 * 86400000).toISOString(),
     status: "active",
-    created_at: new Date().toISOString(),
+    created_at: new Date(Date.now() - 0 * 86400000).toISOString(),
   },
   {
     id: "multi-roblox-1",
@@ -86,7 +86,7 @@ Roblox is looking for Software Engineers to work on high-throughput real-time ba
     application_url: "https://roblox.com/careers",
     last_date: new Date(Date.now() + 30 * 86400000).toISOString(),
     status: "active",
-    created_at: new Date().toISOString(),
+    created_at: new Date(Date.now() - 0 * 86400000).toISOString(),
   },
   {
     id: "multi-welo-1",
@@ -110,7 +110,7 @@ Welo Global is seeking Full Stack Engineers to build real-time collaborative wor
     application_url: "https://welo.space/careers",
     last_date: new Date(Date.now() + 30 * 86400000).toISOString(),
     status: "active",
-    created_at: new Date().toISOString(),
+    created_at: new Date(Date.now() - 1 * 86400000).toISOString(),
   },
   {
     id: "multi-rubrik-1",
@@ -134,7 +134,7 @@ Rubrik is hiring Backend Engineers to design fault-tolerant data security, backu
     application_url: "https://rubrik.com/careers",
     last_date: new Date(Date.now() + 30 * 86400000).toISOString(),
     status: "active",
-    created_at: new Date().toISOString(),
+    created_at: new Date(Date.now() - 1 * 86400000).toISOString(),
   },
   {
     id: "multi-stripe-1",
@@ -158,7 +158,7 @@ Stripe is hiring Software Engineers to expand global financial infrastructure, b
     application_url: "https://stripe.com/jobs",
     last_date: new Date(Date.now() + 30 * 86400000).toISOString(),
     status: "active",
-    created_at: new Date().toISOString(),
+    created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
   },
   {
     id: "multi-databricks-1",
@@ -182,7 +182,7 @@ Databricks is hiring Engineers to build next-generation Lakehouse AI and large-s
     application_url: "https://databricks.com/careers",
     last_date: new Date(Date.now() + 30 * 86400000).toISOString(),
     status: "active",
-    created_at: new Date().toISOString(),
+    created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
   },
   {
     id: "job-fallback-1",
@@ -202,7 +202,7 @@ Tata Consultancy Services (TCS) is inviting applications for the TCS National Qu
     application_url: "https://www.tcs.com/careers",
     last_date: new Date(Date.now() + 25 * 86400000).toISOString(),
     status: "active",
-    created_at: new Date().toISOString(),
+    created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
   },
   {
     id: "job-fallback-2",
@@ -222,7 +222,7 @@ Infosys is recruiting high-caliber coders for Specialist Programmer (SP) and Dig
     application_url: "https://www.infosys.com/careers.html",
     last_date: new Date(Date.now() + 20 * 86400000).toISOString(),
     status: "active",
-    created_at: new Date().toISOString(),
+    created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
   },
   {
     company_id: "comp-google",
@@ -242,7 +242,7 @@ Google India is seeking world-class Software Development Engineers for our 2026 
     application_url: "https://careers.google.com/jobs/results/",
     last_date: new Date(Date.now() + 18 * 86400000).toISOString(),
     status: "active",
-    created_at: new Date().toISOString(),
+    created_at: new Date(Date.now() - 4 * 86400000).toISOString(),
   },
   {
     company_id: "comp-amazon",
@@ -262,7 +262,7 @@ The Amazon Web Services (AWS) AI Science team is building next-generation Genera
     application_url: "https://www.amazon.jobs/en/",
     last_date: new Date(Date.now() + 15 * 86400000).toISOString(),
     status: "active",
-    created_at: new Date().toISOString(),
+    created_at: new Date(Date.now() - 4 * 86400000).toISOString(),
   },
   {
     company_id: "comp-microsoft",
@@ -282,7 +282,7 @@ Microsoft India Developer Center (IDC) is seeking Full Stack Engineers to design
     application_url: "https://careers.microsoft.com/us/en",
     last_date: new Date(Date.now() + 22 * 86400000).toISOString(),
     status: "active",
-    created_at: new Date().toISOString(),
+    created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
   },
 ];
 

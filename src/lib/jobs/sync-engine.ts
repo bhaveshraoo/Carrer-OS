@@ -96,6 +96,8 @@ function processDbJobs(candidatePool: JobWithCompany[]): JobWithCompany[] {
  * 1. Queries Supabase DB first for active jobs -> Returns ALL active accumulated jobs in < 30ms.
  * 2. If DB has 0 jobs, triggers harvester aggregator + fallbacks to auto-seed DB.
  */
+import { getAccumulatedStoreJobs } from "./job-store";
+
 export async function syncAndFetchSupabaseJobs(
   userClient: SupabaseClient,
   userId?: string
@@ -165,7 +167,8 @@ export async function syncAndFetchSupabaseJobs(
         };
       });
 
-      const processedDbJobs = processDbJobs([...dbCandidates, ...FALLBACK_JOBS]);
+      const storeJobs = getAccumulatedStoreJobs();
+      const processedDbJobs = processDbJobs([...dbCandidates, ...storeJobs]);
 
       return processedDbJobs.map((j) => ({
         ...j,
@@ -175,64 +178,16 @@ export async function syncAndFetchSupabaseJobs(
       }));
     }
   } catch {
-    // Fall back to live harvesters if DB query fails
+    // Fall back to accumulated store if DB query fails
   }
 
-  // 3. SEED PATH (Triggered only when DB has 0 jobs): Aggregates live jobs and seeds DB
-  const rawApiJobs = await getReal30IndianJobs().catch(() => []);
-  const candidatePool: JobWithCompany[] = [...rawApiJobs, ...FALLBACK_JOBS];
-  const finalProcessedJobs = processDbJobs(candidatePool);
-
-  // Background seed to DB
-  if (finalProcessedJobs.length > 0) {
-    (async () => {
-      try {
-        const defaultDeadline = new Date(Date.now() + 14 * 86400000).toISOString();
-
-        const companyBatch = finalProcessedJobs.map((job) => ({
-          id: job.company_id || `comp-${job.company_slug}`,
-          name: job.company_name,
-          slug: job.company_slug,
-          logo_url: job.company_logo_url,
-          metadata: {
-            tier: job.company_tier,
-            location: job.location,
-            verified: true,
-            auto_ingested: true,
-          },
-        }));
-
-        await adminClient.from("companies").upsert(companyBatch, { onConflict: "slug" });
-
-        const jobBatch = finalProcessedJobs.map((job) => ({
-          id: String(job.id),
-          company_id: job.company_id || `comp-${job.company_slug}`,
-          role: job.role,
-          description: job.description,
-          domain: job.domain,
-          location: job.location,
-          ctc_range: job.ctc_range,
-          tech_stack: job.tech_stack,
-          interview_types: job.interview_types,
-          application_url: job.application_url,
-          last_date:
-            job.last_date && new Date(job.last_date).getTime() > Date.now()
-              ? job.last_date
-              : defaultDeadline,
-          status: "active",
-          created_at: nowISO,
-        }));
-
-        await adminClient.from("jobs").upsert(jobBatch, { onConflict: "id" });
-      } catch {
-        // Background sync catch
-      }
-    })();
-  }
+  // 3. STORE & HARVEST FALLBACK PATH: Reads accumulated jobs from store
+  const storeJobs = getAccumulatedStoreJobs();
+  const finalProcessedJobs = processDbJobs(storeJobs);
 
   return finalProcessedJobs.map((j) => ({
     ...j,
-    created_at: nowISO,
+    created_at: j.created_at || nowISO,
     is_wishlisted: wishlistedJobIds.has(j.id),
     is_company_targeted: targetedCompanyIds.has(j.company_id),
   }));

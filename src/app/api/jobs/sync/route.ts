@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getReal30IndianJobs } from "@/lib/jobs/real-jobs-aggregator";
 import { FALLBACK_JOBS } from "@/lib/jobs/jobs";
+import { mergeFreshHarvestJobs, getAccumulatedStoreJobs } from "@/lib/jobs/job-store";
 
 export const dynamic = "force-dynamic";
 
@@ -90,19 +91,15 @@ async function handleSync(request: Request) {
       console.error("Sync batch upsert error:", jobErr);
     }
 
-    // Query total accumulated active jobs in database
-    const { count: totalActiveInDb } = await supabase
-      .from("jobs")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "active")
-      .gte("last_date", nowISO);
+    mergeFreshHarvestJobs(freshJobs);
+    const accumulatedStore = getAccumulatedStoreJobs();
 
     return NextResponse.json({
       success: true,
-      message: `Successfully ingested ${freshJobs.length} fresh jobs! Total accumulated active marketplace jobs in DB: ${totalActiveInDb || freshJobs.length}.`,
+      message: `Successfully ingested ${freshJobs.length} fresh jobs! Total accumulated active marketplace jobs in DB: ${accumulatedStore.length}.`,
       dbSyncCount: freshJobs.length,
-      totalActiveInDb: totalActiveInDb || freshJobs.length,
-      jobs: freshJobs,
+      totalActiveInDb: accumulatedStore.length,
+      jobs: accumulatedStore,
     });
   } catch (error: any) {
     console.error("POST /api/jobs/sync error:", error);
