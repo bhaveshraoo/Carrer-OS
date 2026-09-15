@@ -64,7 +64,21 @@ export async function GET(req: Request) {
       appMap.set(rec.id, rec);
     });
 
-    let result = Array.from(appMap.values());
+    let result = Array.from(appMap.values()).map((rec) => ({
+      ...rec,
+      seniorityLevel:
+        rec.seniorityLevel ||
+        ((rec.atsScore ?? 0) >= 95 || (rec.dsaSolvedCount ?? 0) >= 300
+          ? "Architect / PM Level"
+          : (rec.atsScore ?? 0) >= 92 || (rec.dsaSolvedCount ?? 0) >= 200
+          ? "Senior / Lead Track"
+          : (rec.atsScore ?? 0) >= 88 || (rec.dsaSolvedCount ?? 0) >= 150
+          ? "Mid-Level Engineer"
+          : (rec.atsScore ?? 0) >= 80 || (rec.dsaSolvedCount ?? 0) >= 80
+          ? "Junior Intern"
+          : "Freshers / Entry Level"),
+    }));
+
     if (projectId) {
       result = result.filter((a) => !a.projectId || a.projectId === projectId);
     }

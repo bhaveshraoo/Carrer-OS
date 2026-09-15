@@ -57,7 +57,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { MOCK_PROJECTS, MOCK_TASKS, MOCK_ATTENDANCE, MOCK_ANNOUNCEMENTS, MOCK_APPLICATIONS } from "@/lib/projects/data";
-import { Project, SeniorityTag, Task, AttendanceRecord, ProjectAnnouncement, ProjectTeam, ProjectApplication } from "@/lib/projects/types";
+import { Project, SeniorityTag, SENIORITY_ORDER, getSeniorityRank, Task, AttendanceRecord, ProjectAnnouncement, ProjectTeam, ProjectApplication } from "@/lib/projects/types";
 import { useNotifications } from "@/components/notifications/notification-provider";
 import { createClient } from "@/lib/supabase/client";
 
@@ -432,6 +432,8 @@ export default function ProjectsPage() {
 
   // PM Applicants & Governance Console Sub-tab State
   const [pmSubTab, setPmSubTab] = useState<"candidates" | "leaves" | "extensions">("candidates");
+  const [pmSeniorityFilter, setPmSeniorityFilter] = useState<string>("All");
+  const [pmSenioritySort, setPmSenioritySort] = useState<"desc" | "asc">("desc");
 
   // Tenure Extensions List state
   const [tenureExtensionsList, setTenureExtensionsList] = useState<any[]>([
@@ -1033,6 +1035,53 @@ export default function ProjectsPage() {
     }
     loadDbApplications();
   }, [enrolledProject.id]);
+
+  // Sequence Candidate Applications by Seniority Level Order
+  const sequencedApplications = useMemo(() => {
+    return applications
+      .filter((app) => {
+        const tag = app.seniorityLevel || (
+          (app.atsScore ?? 0) >= 95 || (app.dsaSolvedCount ?? 0) >= 300
+            ? "Architect / PM Level"
+            : (app.atsScore ?? 0) >= 92 || (app.dsaSolvedCount ?? 0) >= 200
+            ? "Senior / Lead Track"
+            : (app.atsScore ?? 0) >= 88 || (app.dsaSolvedCount ?? 0) >= 150
+            ? "Mid-Level Engineer"
+            : (app.atsScore ?? 0) >= 80 || (app.dsaSolvedCount ?? 0) >= 80
+            ? "Junior Intern"
+            : "Freshers / Entry Level"
+        );
+        return pmSeniorityFilter === "All" || tag.toLowerCase() === pmSeniorityFilter.toLowerCase();
+      })
+      .sort((a, b) => {
+        const tagA = a.seniorityLevel || (
+          (a.atsScore ?? 0) >= 95 || (a.dsaSolvedCount ?? 0) >= 300
+            ? "Architect / PM Level"
+            : (a.atsScore ?? 0) >= 92 || (a.dsaSolvedCount ?? 0) >= 200
+            ? "Senior / Lead Track"
+            : (a.atsScore ?? 0) >= 88 || (a.dsaSolvedCount ?? 0) >= 150
+            ? "Mid-Level Engineer"
+            : (a.atsScore ?? 0) >= 80 || (a.dsaSolvedCount ?? 0) >= 80
+            ? "Junior Intern"
+            : "Freshers / Entry Level"
+        );
+        const tagB = b.seniorityLevel || (
+          (b.atsScore ?? 0) >= 95 || (b.dsaSolvedCount ?? 0) >= 300
+            ? "Architect / PM Level"
+            : (b.atsScore ?? 0) >= 92 || (b.dsaSolvedCount ?? 0) >= 200
+            ? "Senior / Lead Track"
+            : (b.atsScore ?? 0) >= 88 || (b.dsaSolvedCount ?? 0) >= 150
+            ? "Mid-Level Engineer"
+            : (b.atsScore ?? 0) >= 80 || (b.dsaSolvedCount ?? 0) >= 80
+            ? "Junior Intern"
+            : "Freshers / Entry Level"
+        );
+        const rankA = getSeniorityRank(tagA);
+        const rankB = getSeniorityRank(tagB);
+        if (pmSenioritySort === "desc") return rankB - rankA;
+        return rankA - rankB;
+      });
+  }, [applications, pmSeniorityFilter, pmSenioritySort]);
 
   // Sync Project Teams with Database API (/api/projects/teams) on Mount
   useEffect(() => {
@@ -2322,45 +2371,98 @@ export default function ProjectsPage() {
 
               {/* SUB-VIEW 1: RECEIVED CANDIDATE APPLICATIONS */}
               {pmSubTab === "candidates" && (
-                <div className="surface rounded-2xl border border-border overflow-hidden shadow-sm">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-border bg-surface-2 text-muted font-bold uppercase tracking-wider text-[10px]">
-                        <th className="py-3.5 px-4">Candidate</th>
-                        <th className="py-3.5 px-4">Domain &amp; Pitch</th>
-                        <th className="py-3.5 px-4">Status &amp; Allocation</th>
-                        <th className="py-3.5 px-4 text-right">Actions (Hire / Next Round / Reject)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {applications.map((app) => (
-                        <tr key={app.id} className="hover:bg-surface-2/50 transition-colors">
-                          <td className="py-3.5 px-4 cursor-pointer group" onClick={() => setSelectedApplicantForView(app)}>
-                            <p className="font-bold text-primary text-sm group-hover:text-orange-400 flex items-center gap-1">
-                              {app.applicantName}
-                              <span className="text-[10px] text-muted font-normal group-hover:text-orange-400/80">(Click to View)</span>
-                            </p>
-                            <p className="text-[11px] text-muted font-mono">{app.email}</p>
-                            {app.college && (
-                              <p className="text-[10px] text-teal-400 font-semibold mt-0.5">{app.college} · {app.degree}</p>
-                            )}
-                          </td>
-                          <td className="py-3.5 px-4 max-w-xs cursor-pointer" onClick={() => setSelectedApplicantForView(app)}>
-                            <p className="font-bold text-teal-400">{app.domain}</p>
-                            <p className="text-[11px] text-secondary truncate">{app.experience}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              {app.atsScore && (
-                                <span className="text-[10px] font-extrabold text-teal-300 bg-teal-500/10 px-2 py-0.5 rounded-full border border-teal-500/20">
-                                  ATS: {app.atsScore}%
-                                </span>
-                              )}
-                              {app.dsaSolvedCount && (
-                                <span className="text-[10px] font-extrabold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-                                  DSA: {app.dsaSolvedCount} Solved
-                                </span>
-                              )}
-                            </div>
-                          </td>
+                <div className="space-y-3">
+                  {/* Seniority Sequence Toolbar */}
+                  <div className="surface p-3.5 rounded-2xl border border-border flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+                      <span className="font-bold text-muted uppercase text-[10px] tracking-wider shrink-0 flex items-center gap-1">
+                        <Award className="size-3.5 text-purple-400" /> Seniority Level:
+                      </span>
+                      {["All", "Architect / PM Level", "Senior / Lead Track", "Mid-Level Engineer", "Junior Intern", "Freshers / Entry Level"].map((sen) => (
+                        <button
+                          key={sen}
+                          onClick={() => setPmSeniorityFilter(sen)}
+                          className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all whitespace-nowrap border ${
+                            pmSeniorityFilter === sen
+                              ? "bg-purple-600 text-white border-purple-500 shadow-sm"
+                              : "surface-2 text-secondary hover:text-primary border-border"
+                          }`}
+                        >
+                          {sen}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[10px] font-bold text-muted uppercase whitespace-nowrap">Seniority Order:</span>
+                      <select
+                        value={pmSenioritySort}
+                        onChange={(e: any) => setPmSenioritySort(e.target.value)}
+                        className="h-8 px-2.5 rounded-xl surface-2 border border-border text-[11px] font-bold text-primary focus:outline-none cursor-pointer"
+                      >
+                        <option value="desc">⬇ Seniority: High → Low</option>
+                        <option value="asc">⬆ Seniority: Low → High</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="surface rounded-2xl border border-border overflow-hidden shadow-sm">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-border bg-surface-2 text-muted font-bold uppercase tracking-wider text-[10px]">
+                          <th className="py-3.5 px-4">Candidate</th>
+                          <th className="py-3.5 px-4">Seniority Tag &amp; Domain</th>
+                          <th className="py-3.5 px-4">Status &amp; Allocation</th>
+                          <th className="py-3.5 px-4 text-right">Actions (Hire / Next Round / Reject)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {sequencedApplications.map((app) => {
+                          const displaySeniority =
+                            app.seniorityLevel ||
+                            ((app.atsScore ?? 0) >= 95 || (app.dsaSolvedCount ?? 0) >= 300
+                              ? "Architect / PM Level"
+                              : (app.atsScore ?? 0) >= 92 || (app.dsaSolvedCount ?? 0) >= 200
+                              ? "Senior / Lead Track"
+                              : (app.atsScore ?? 0) >= 88 || (app.dsaSolvedCount ?? 0) >= 150
+                              ? "Mid-Level Engineer"
+                              : (app.atsScore ?? 0) >= 80 || (app.dsaSolvedCount ?? 0) >= 80
+                              ? "Junior Intern"
+                              : "Freshers / Entry Level");
+
+                          return (
+                            <tr key={app.id} className="hover:bg-surface-2/50 transition-colors">
+                              <td className="py-3.5 px-4 cursor-pointer group" onClick={() => setSelectedApplicantForView(app)}>
+                                <p className="font-bold text-primary text-sm group-hover:text-orange-400 flex items-center gap-1">
+                                  {app.applicantName}
+                                  <span className="text-[10px] text-muted font-normal group-hover:text-orange-400/80">(Click to View)</span>
+                                </p>
+                                <p className="text-[11px] text-muted font-mono">{app.email}</p>
+                                {app.college && (
+                                  <p className="text-[10px] text-teal-400 font-semibold mt-0.5">{app.college} · {app.degree}</p>
+                                )}
+                              </td>
+                              <td className="py-3.5 px-4 max-w-xs cursor-pointer" onClick={() => setSelectedApplicantForView(app)}>
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <span className="text-[10px] font-extrabold text-purple-300 bg-purple-500/15 px-2.5 py-0.5 rounded-full border border-purple-500/30 flex items-center gap-1">
+                                    <Award className="size-3 text-purple-400" /> 🎯 {displaySeniority}
+                                  </span>
+                                </div>
+                                <p className="font-bold text-teal-400">{app.domain}</p>
+                                <p className="text-[11px] text-secondary truncate">{app.experience}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  {app.atsScore && (
+                                    <span className="text-[10px] font-extrabold text-teal-300 bg-teal-500/10 px-2 py-0.5 rounded-full border border-teal-500/20">
+                                      ATS: {app.atsScore}%
+                                    </span>
+                                  )}
+                                  {app.dsaSolvedCount && (
+                                    <span className="text-[10px] font-extrabold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                                      DSA: {app.dsaSolvedCount} Solved
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
                           <td className="py-3.5 px-4">
                             <span
                               className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
@@ -2429,11 +2531,13 @@ export default function ProjectsPage() {
                             </div>
                           </td>
                         </tr>
-                      ))}
+                      );
+                    })}
                     </tbody>
                   </table>
                 </div>
-              )}
+              </div>
+            )}
 
               {/* SUB-VIEW 2: EXTENDED LEAVE REQUESTS (3 TO 10 DAYS TO PM) */}
               {pmSubTab === "leaves" && (
@@ -5761,6 +5865,19 @@ export default function ProjectsPage() {
                     </h3>
                     <span className="text-xs font-bold text-teal-400 bg-teal-500/10 px-3 py-0.5 rounded-full border border-teal-500/20">
                       {selectedApplicantForView.domain} Domain
+                    </span>
+                    <span className="text-xs font-bold text-purple-300 bg-purple-500/15 px-3 py-0.5 rounded-full border border-purple-500/30 flex items-center gap-1">
+                      <Award className="size-3.5 text-purple-400" /> 🎯 Seniority: {selectedApplicantForView.seniorityLevel || (
+                        (selectedApplicantForView.atsScore ?? 0) >= 95 || (selectedApplicantForView.dsaSolvedCount ?? 0) >= 300
+                          ? "Architect / PM Level"
+                          : (selectedApplicantForView.atsScore ?? 0) >= 92 || (selectedApplicantForView.dsaSolvedCount ?? 0) >= 200
+                          ? "Senior / Lead Track"
+                          : (selectedApplicantForView.atsScore ?? 0) >= 88 || (selectedApplicantForView.dsaSolvedCount ?? 0) >= 150
+                          ? "Mid-Level Engineer"
+                          : (selectedApplicantForView.atsScore ?? 0) >= 80 || (selectedApplicantForView.dsaSolvedCount ?? 0) >= 80
+                          ? "Junior Intern"
+                          : "Freshers / Entry Level"
+                      )}
                     </span>
                     <span className={`text-[10px] font-extrabold px-3 py-0.5 rounded-full uppercase border ${
                       selectedApplicantForView.status === "selected"

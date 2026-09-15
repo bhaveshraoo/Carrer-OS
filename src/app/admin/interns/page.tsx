@@ -27,6 +27,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useNotifications } from "@/components/notifications/notification-provider";
+import { SeniorityTag, getSeniorityRank } from "@/lib/projects/types";
 
 export interface Intern {
   id: string;
@@ -35,6 +36,7 @@ export interface Intern {
   college: string;
   projectTitle: string;
   domain: string;
+  seniorityLevel?: SeniorityTag;
   teamLeader: string;
   startDate: string;
   durationMonths: number;
@@ -53,6 +55,7 @@ const INITIAL_INTERNS: Intern[] = [
     college: "IIT Delhi",
     projectTitle: "AI Voice-Powered Career Assistant",
     domain: "Frontend Engineer Lead",
+    seniorityLevel: "Senior / Lead Track",
     teamLeader: "Aarav Gupta",
     startDate: "2026-05-01",
     durationMonths: 3,
@@ -69,6 +72,7 @@ const INITIAL_INTERNS: Intern[] = [
     college: "BITS Pilani",
     projectTitle: "Autonomous Code Refactoring Agent",
     domain: "Full Stack Engineer",
+    seniorityLevel: "Mid-Level Engineer",
     teamLeader: "Aarav Gupta",
     startDate: "2026-05-15",
     durationMonths: 3,
@@ -85,6 +89,7 @@ const INITIAL_INTERNS: Intern[] = [
     college: "IIIT Hyderabad",
     projectTitle: "AI Voice-Powered Career Assistant",
     domain: "AI/ML Engineer",
+    seniorityLevel: "Architect / PM Level",
     teamLeader: "Priya Sharma",
     startDate: "2026-06-01",
     durationMonths: 3,
@@ -101,6 +106,7 @@ const INITIAL_INTERNS: Intern[] = [
     college: "NSUT Delhi",
     projectTitle: "Open Source Developer Tooling",
     domain: "Backend Engineer",
+    seniorityLevel: "Junior Intern",
     teamLeader: "Karan Mehta",
     startDate: "2026-04-15",
     durationMonths: 3,
@@ -117,6 +123,8 @@ export default function AdminInternsPage() {
   const [interns, setInterns] = useState<Intern[]>(INITIAL_INTERNS);
   const [search, setSearch] = useState("");
   const [selectedDomain, setSelectedDomain] = useState("All");
+  const [selectedSeniorityFilter, setSelectedSeniorityFilter] = useState("All");
+  const [senioritySort, setSenioritySort] = useState<"desc" | "asc">("desc");
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedInternForEval, setSelectedInternForEval] = useState<Intern | null>(null);
 
@@ -129,15 +137,42 @@ export default function AdminInternsPage() {
   const [teamLeader, setTeamLeader] = useState("Aarav Gupta");
   const [stipendMonthly, setStipendMonthly] = useState("₹15,000 / mo");
 
-  const filteredInterns = interns.filter((i) => {
-    const matchesSearch =
-      i.name.toLowerCase().includes(search.toLowerCase()) ||
-      i.email.toLowerCase().includes(search.toLowerCase()) ||
-      i.college.toLowerCase().includes(search.toLowerCase()) ||
-      i.projectTitle.toLowerCase().includes(search.toLowerCase());
-    const matchesDomain = selectedDomain === "All" || i.domain.includes(selectedDomain);
-    return matchesSearch && matchesDomain;
-  });
+  const filteredInterns = interns
+    .filter((i) => {
+      const matchesSearch =
+        i.name.toLowerCase().includes(search.toLowerCase()) ||
+        i.college.toLowerCase().includes(search.toLowerCase()) ||
+        i.projectTitle.toLowerCase().includes(search.toLowerCase()) ||
+        i.domain.toLowerCase().includes(search.toLowerCase());
+      const matchesDomain = selectedDomain === "All" || i.domain.includes(selectedDomain);
+
+      const tag = i.seniorityLevel || (
+        i.performanceScore >= 95 ? "Architect / PM Level" :
+        i.performanceScore >= 92 ? "Senior / Lead Track" :
+        i.performanceScore >= 88 ? "Mid-Level Engineer" :
+        i.performanceScore >= 80 ? "Junior Intern" : "Freshers / Entry Level"
+      );
+      const matchesSeniority = selectedSeniorityFilter === "All" || tag.toLowerCase() === selectedSeniorityFilter.toLowerCase();
+      return matchesSearch && matchesDomain && matchesSeniority;
+    })
+    .sort((a, b) => {
+      const tagA = a.seniorityLevel || (
+        a.performanceScore >= 95 ? "Architect / PM Level" :
+        a.performanceScore >= 92 ? "Senior / Lead Track" :
+        a.performanceScore >= 88 ? "Mid-Level Engineer" :
+        a.performanceScore >= 80 ? "Junior Intern" : "Freshers / Entry Level"
+      );
+      const tagB = b.seniorityLevel || (
+        b.performanceScore >= 95 ? "Architect / PM Level" :
+        b.performanceScore >= 92 ? "Senior / Lead Track" :
+        b.performanceScore >= 88 ? "Mid-Level Engineer" :
+        b.performanceScore >= 80 ? "Junior Intern" : "Freshers / Entry Level"
+      );
+      const rankA = getSeniorityRank(tagA);
+      const rankB = getSeniorityRank(tagB);
+      if (senioritySort === "desc") return rankB - rankA;
+      return rankA - rankB;
+    });
 
   // KPI Calculations
   const totalInterns = interns.length;
@@ -301,26 +336,76 @@ export default function AdminInternsPage() {
             ))}
           </div>
         </div>
+
+        {/* Seniority Sequence Toolbar */}
+        <div className="surface p-3.5 rounded-2xl border border-border flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+            <span className="font-bold text-muted uppercase text-[10px] tracking-wider shrink-0 flex items-center gap-1">
+              <Award className="size-3.5 text-purple-400" /> Seniority Level:
+            </span>
+            {["All", "Architect / PM Level", "Senior / Lead Track", "Mid-Level Engineer", "Junior Intern", "Freshers / Entry Level"].map((sen) => (
+              <button
+                key={sen}
+                onClick={() => setSelectedSeniorityFilter(sen)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all whitespace-nowrap border ${
+                  selectedSeniorityFilter === sen
+                    ? "bg-purple-600 text-white border-purple-500 shadow-sm"
+                    : "surface-2 text-secondary hover:text-primary border-border"
+                }`}
+              >
+                {sen}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[10px] font-bold text-muted uppercase whitespace-nowrap">Seniority Sequence:</span>
+            <select
+              value={senioritySort}
+              onChange={(e: any) => setSenioritySort(e.target.value)}
+              className="h-8 px-2.5 rounded-xl surface-2 border border-border text-[11px] font-bold text-primary focus:outline-none cursor-pointer"
+            >
+              <option value="desc">⬇ Seniority: High → Low</option>
+              <option value="asc">⬆ Seniority: Low → High</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* INTERNS ROSTER CARDS */}
       <div className="space-y-4">
-        {filteredInterns.map((intern) => (
-          <div
-            key={intern.id}
-            className="surface rounded-3xl p-6 border border-border space-y-4 shadow-sm hover:border-orange-500/30 transition-all text-xs"
-          >
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-3 border-b border-border">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-bold text-base text-primary">{intern.name}</h3>
-                  <span className="text-[10px] font-bold text-teal-400 bg-teal-500/10 px-2.5 py-0.5 rounded-full border border-teal-500/20">
-                    {intern.college}
-                  </span>
-                  <span className="text-[10px] font-bold text-orange-400 bg-orange-500/10 px-2.5 py-0.5 rounded-full border border-orange-500/20">
-                    {intern.domain}
-                  </span>
-                </div>
+        {filteredInterns.map((intern) => {
+          const displaySeniority =
+            intern.seniorityLevel ||
+            (intern.performanceScore >= 95
+              ? "Architect / PM Level"
+              : intern.performanceScore >= 92
+              ? "Senior / Lead Track"
+              : intern.performanceScore >= 88
+              ? "Mid-Level Engineer"
+              : intern.performanceScore >= 80
+              ? "Junior Intern"
+              : "Freshers / Entry Level");
+
+          return (
+            <div
+              key={intern.id}
+              className="surface rounded-3xl p-6 border border-border space-y-4 shadow-sm hover:border-orange-500/30 transition-all text-xs"
+            >
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-3 border-b border-border">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-bold text-base text-primary">{intern.name}</h3>
+                    <span className="text-xs font-bold text-purple-300 bg-purple-500/15 px-2.5 py-0.5 rounded-full border border-purple-500/30 flex items-center gap-1">
+                      <Award className="size-3 text-purple-400" /> 🎯 {displaySeniority}
+                    </span>
+                    <span className="text-[10px] font-bold text-teal-400 bg-teal-500/10 px-2.5 py-0.5 rounded-full border border-teal-500/20">
+                      {intern.college}
+                    </span>
+                    <span className="text-[10px] font-bold text-orange-400 bg-orange-500/10 px-2.5 py-0.5 rounded-full border border-orange-500/20">
+                      {intern.domain}
+                    </span>
+                  </div>
                 <p className="text-muted">
                   Project: <strong className="text-primary">{intern.projectTitle}</strong> · Team Lead: <strong className="text-primary">{intern.teamLeader}</strong>
                 </p>
@@ -407,8 +492,9 @@ export default function AdminInternsPage() {
                 </span>
               ))}
             </div>
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
 
       {/* ENROLL NEW INTERN MODAL */}

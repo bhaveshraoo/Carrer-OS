@@ -30,6 +30,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useNotifications } from "@/components/notifications/notification-provider";
+import { SeniorityTag, getSeniorityRank } from "@/lib/projects/types";
 
 interface CandidateApp {
   id: string;
@@ -37,6 +38,7 @@ interface CandidateApp {
   email: string;
   projectTitle: string;
   domain: string;
+  seniorityLevel?: SeniorityTag;
   resumeUrl: string;
   githubUrl: string;
   linkedInUrl?: string;
@@ -211,6 +213,8 @@ export default function AdminApplicationsPage() {
   const [tenureExtensions, setTenureExtensions] = useState<TenureExtensionApp[]>(INITIAL_TENURE_EXTENSIONS);
 
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [selectedSeniorityFilter, setSelectedSeniorityFilter] = useState<string>("all");
+  const [senioritySort, setSenioritySort] = useState<"desc" | "asc">("desc");
   const [search, setSearch] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -253,6 +257,7 @@ export default function AdminApplicationsPage() {
             githubUrl: item.githubUrl || "https://github.com",
             pitch: item.pitch || item.experience || "Dedicated candidate seeking project role.",
             deliverables: item.deliverables || "Will deliver assigned sprint tasks.",
+            seniorityLevel: item.seniorityLevel,
             status: item.status || "applied",
             appliedAt: item.appliedAt || new Date().toISOString().split("T")[0],
             interviewDate: item.interviewDate,
@@ -514,15 +519,42 @@ export default function AdminApplicationsPage() {
     });
   }
 
-  // Filters
-  const filteredApps = applications.filter((app) => {
-    const matchesSearch =
-      app.candidateName.toLowerCase().includes(search.toLowerCase()) ||
-      app.projectTitle.toLowerCase().includes(search.toLowerCase()) ||
-      app.domain.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = filterStatus === "all" || app.status === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
+  // Filters & Seniority Sequence Sorting
+  const filteredApps = applications
+    .filter((app) => {
+      const matchesSearch =
+        app.candidateName.toLowerCase().includes(search.toLowerCase()) ||
+        app.projectTitle.toLowerCase().includes(search.toLowerCase()) ||
+        app.domain.toLowerCase().includes(search.toLowerCase());
+      const matchesStatus = filterStatus === "all" || app.status === filterStatus;
+
+      const tag = app.seniorityLevel || (
+        (app.aiScore ?? 0) >= 95 ? "Architect / PM Level" :
+        (app.aiScore ?? 0) >= 92 ? "Senior / Lead Track" :
+        (app.aiScore ?? 0) >= 88 ? "Mid-Level Engineer" :
+        (app.aiScore ?? 0) >= 80 ? "Junior Intern" : "Freshers / Entry Level"
+      );
+      const matchesSeniority = selectedSeniorityFilter === "all" || tag.toLowerCase() === selectedSeniorityFilter.toLowerCase();
+      return matchesSearch && matchesStatus && matchesSeniority;
+    })
+    .sort((a, b) => {
+      const tagA = a.seniorityLevel || (
+        (a.aiScore ?? 0) >= 95 ? "Architect / PM Level" :
+        (a.aiScore ?? 0) >= 92 ? "Senior / Lead Track" :
+        (a.aiScore ?? 0) >= 88 ? "Mid-Level Engineer" :
+        (a.aiScore ?? 0) >= 80 ? "Junior Intern" : "Freshers / Entry Level"
+      );
+      const tagB = b.seniorityLevel || (
+        (b.aiScore ?? 0) >= 95 ? "Architect / PM Level" :
+        (b.aiScore ?? 0) >= 92 ? "Senior / Lead Track" :
+        (b.aiScore ?? 0) >= 88 ? "Mid-Level Engineer" :
+        (b.aiScore ?? 0) >= 80 ? "Junior Intern" : "Freshers / Entry Level"
+      );
+      const rankA = getSeniorityRank(tagA);
+      const rankB = getSeniorityRank(tagB);
+      if (senioritySort === "desc") return rankB - rankA;
+      return rankA - rankB;
+    });
 
   const scheduledInterviews = applications.filter((app) => app.status === "interview_scheduled" || app.interviewDate);
 
@@ -654,26 +686,76 @@ export default function AdminApplicationsPage() {
             </div>
           </div>
 
+          {/* Seniority Sequence Toolbar */}
+          <div className="surface p-3.5 rounded-2xl border border-border flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+              <span className="font-bold text-muted uppercase text-[10px] tracking-wider shrink-0 flex items-center gap-1">
+                <Award className="size-3.5 text-purple-400" /> Seniority Level:
+              </span>
+              {["all", "Architect / PM Level", "Senior / Lead Track", "Mid-Level Engineer", "Junior Intern", "Freshers / Entry Level"].map((sen) => (
+                <button
+                  key={sen}
+                  onClick={() => setSelectedSeniorityFilter(sen)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all whitespace-nowrap border ${
+                    selectedSeniorityFilter === sen
+                      ? "bg-purple-600 text-white border-purple-500 shadow-sm"
+                      : "surface-2 text-secondary hover:text-primary border-border"
+                  }`}
+                >
+                  {sen === "all" ? "All Seniorities" : sen}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[10px] font-bold text-muted uppercase whitespace-nowrap">Seniority Sequence:</span>
+              <select
+                value={senioritySort}
+                onChange={(e: any) => setSenioritySort(e.target.value)}
+                className="h-8 px-2.5 rounded-xl surface-2 border border-border text-[11px] font-bold text-primary focus:outline-none cursor-pointer"
+              >
+                <option value="desc">⬇ Seniority: High → Low</option>
+                <option value="asc">⬆ Seniority: Low → High</option>
+              </select>
+            </div>
+          </div>
+
           {/* Cards List */}
           <div className="space-y-4">
-            {filteredApps.map((app) => (
-              <div
-                key={app.id}
-                className="surface rounded-3xl p-6 border border-border space-y-4 shadow-sm hover:border-orange-500/30 transition-all"
-              >
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-border">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-bold text-base text-primary">{app.candidateName}</h3>
-                      <span className="text-xs font-bold text-teal-400 bg-teal-500/10 px-2.5 py-0.5 rounded-full border border-teal-500/20">
-                        {app.domain}
-                      </span>
-                      {app.aiScore && (
-                        <span className="text-[11px] font-extrabold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 flex items-center gap-1">
-                          <Sparkles className="size-3" /> AI Match: {app.aiScore}%
+            {filteredApps.map((app) => {
+              const displaySeniority =
+                app.seniorityLevel ||
+                ((app.aiScore ?? 0) >= 95
+                  ? "Architect / PM Level"
+                  : (app.aiScore ?? 0) >= 92
+                  ? "Senior / Lead Track"
+                  : (app.aiScore ?? 0) >= 88
+                  ? "Mid-Level Engineer"
+                  : (app.aiScore ?? 0) >= 80
+                  ? "Junior Intern"
+                  : "Freshers / Entry Level");
+
+              return (
+                <div
+                  key={app.id}
+                  className="surface rounded-3xl p-6 border border-border space-y-4 shadow-sm hover:border-orange-500/30 transition-all"
+                >
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-border">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-bold text-base text-primary">{app.candidateName}</h3>
+                        <span className="text-xs font-bold text-purple-300 bg-purple-500/15 px-2.5 py-0.5 rounded-full border border-purple-500/30 flex items-center gap-1">
+                          <Award className="size-3 text-purple-400" /> 🎯 {displaySeniority}
                         </span>
-                      )}
-                    </div>
+                        <span className="text-xs font-bold text-teal-400 bg-teal-500/10 px-2.5 py-0.5 rounded-full border border-teal-500/20">
+                          {app.domain}
+                        </span>
+                        {app.aiScore && (
+                          <span className="text-[11px] font-extrabold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 flex items-center gap-1">
+                            <Sparkles className="size-3" /> AI Match: {app.aiScore}%
+                          </span>
+                        )}
+                      </div>
                     <p className="text-xs text-muted">{app.email} · Applied for <strong className="text-primary">{app.projectTitle}</strong> on {app.appliedAt}</p>
                   </div>
 
@@ -744,7 +826,8 @@ export default function AdminApplicationsPage() {
                   </div>
                 </div>
               </div>
-            ))}
+            );
+          })}
           </div>
         </div>
       )}

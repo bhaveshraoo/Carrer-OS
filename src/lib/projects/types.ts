@@ -5,6 +5,22 @@ export type SeniorityTag =
   | "Senior / Lead Track"
   | "Architect / PM Level";
 
+export const SENIORITY_ORDER: Record<SeniorityTag, number> = {
+  "Architect / PM Level": 5,
+  "Senior / Lead Track": 4,
+  "Mid-Level Engineer": 3,
+  "Junior Intern": 2,
+  "Freshers / Entry Level": 1,
+};
+
+export function getSeniorityRank(tag?: string): number {
+  if (!tag) return 1;
+  const match = Object.keys(SENIORITY_ORDER).find(
+    (k) => k.toLowerCase() === tag.toLowerCase()
+  );
+  return match ? SENIORITY_ORDER[match as SeniorityTag] : 1;
+}
+
 export interface ProjectTeam {
   id: string;
   projectId: string;
