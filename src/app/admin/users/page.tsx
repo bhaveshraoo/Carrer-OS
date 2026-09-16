@@ -400,11 +400,12 @@ export default function AdminRegisteredUsersPage() {
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider text-[10px] bg-slate-50/50 dark:bg-slate-800/30">
                   <th className="py-3 px-4">Registered DB User</th>
+                  <th className="py-3 px-4">Role Level</th>
+                  <th className="py-3 px-4">Seniority Tag</th>
                   <th className="py-3 px-4">Resume ATS Score</th>
                   <th className="py-3 px-4">DSA Progress</th>
                   <th className="py-3 px-4">AI Interview Score</th>
                   <th className="py-3 px-4">Project Working</th>
-                  <th className="py-3 px-4">Target Company</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -467,6 +468,32 @@ export default function AdminRegisteredUsersPage() {
                             </span>
                           </div>
                         </div>
+                      </td>
+
+                      {/* Role Level Column */}
+                      <td className="py-3.5 px-4">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase border ${
+                          user.user_role === "Boss"
+                            ? "bg-amber-500/20 text-amber-500 border-amber-500/30"
+                            : user.user_role === "Manager"
+                            ? "bg-orange-500/20 text-orange-400 border-orange-500/30"
+                            : user.user_role === "PM"
+                            ? "bg-purple-500/20 text-purple-400 border-purple-500/30"
+                            : user.user_role === "TL"
+                            ? "bg-teal-500/20 text-teal-400 border-teal-500/30"
+                            : user.user_role === "Post-Intern"
+                            ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                            : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700"
+                        }`}>
+                          {user.user_role || "Intern"}
+                        </span>
+                      </td>
+
+                      {/* Seniority Tag Column */}
+                      <td className="py-3.5 px-4">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/10 px-2.5 py-1 text-[11px] font-bold text-purple-600 dark:text-purple-300 border border-purple-500/20 whitespace-nowrap">
+                          🎯 {user.seniority_level || "Freshers / Entry Level"}
+                        </span>
                       </td>
 
                       {/* Resume ATS Score Column */}

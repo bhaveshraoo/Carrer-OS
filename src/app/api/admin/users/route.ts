@@ -37,6 +37,8 @@ export interface RegisteredDbUserTelemetry {
   target_company: string;
   pro_member: boolean;
   admin_role: "Owner" | "Admin User" | "Student";
+  user_role: "Boss" | "Manager" | "PM" | "TL" | "Post-Intern" | "Intern";
+  seniority_level: "Architect / PM Level" | "Senior / Lead Track" | "Mid-Level Engineer" | "Junior Intern" | "Freshers / Entry Level";
   tags: string[];
 }
 
@@ -194,6 +196,8 @@ export async function GET() {
         target_company: targetCompanyStr,
         pro_member: true,
         admin_role: isOwner ? "Owner" : email === "admin@gmail.com" ? "Admin User" : "Student",
+        user_role: (dUser.role || meta.role || (isOwner ? "Boss" : "Intern")) as any,
+        seniority_level: (dUser.seniority_level || meta.seniority_level || (isOwner ? "Architect / PM Level" : "Freshers / Entry Level")) as any,
         tags: isOwner ? ["Boss", "Project Manager", "TL", "DSA Creator", "Company Curator"] : [],
       });
     }
@@ -231,6 +235,8 @@ export async function GET() {
         target_company: "Product Tier 1",
         pro_member: true,
         admin_role: "Student",
+        user_role: (du.role || "Intern") as any,
+        seniority_level: (du.seniority_level || "Freshers / Entry Level") as any,
         tags: [],
       });
     }

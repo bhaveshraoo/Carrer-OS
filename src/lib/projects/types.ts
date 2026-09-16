@@ -1,3 +1,11 @@
+export type UserRoleLevel =
+  | "Boss"
+  | "Manager"
+  | "PM"
+  | "TL"
+  | "Post-Intern"
+  | "Intern";
+
 export type SeniorityTag =
   | "Freshers / Entry Level"
   | "Junior Intern"

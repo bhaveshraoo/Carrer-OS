@@ -212,13 +212,13 @@ export default function ProjectsPage() {
     initUserAndApps();
   }, []);
 
-  // Strict Role Resolution (Boss/Admin -> All projects, Manager -> 5-10 projects, PM -> 1 project, Candidate/Intern -> PM accepted only)
+  // Strict Role Resolution (Boss/Admin -> All projects, Manager -> 5-10 projects, PM -> 1 project, TL -> Team management, Post-Intern -> Verified offboarded, Candidate/Intern -> Standard)
   const userRole = useMemo(() => {
     if (!currentUser) return "Intern";
     const metaRole = currentUser.user_metadata?.role;
     const email = currentUser.email?.toLowerCase().trim() || "";
 
-    // 1. Boss / System Admin Role (Explicit authorization only)
+    // 1. Boss / System Admin Role (Explicit authorization or DB metadata)
     if (
       metaRole === "Boss" ||
       metaRole === "Admin" ||
@@ -230,7 +230,7 @@ export default function ProjectsPage() {
       return "Boss";
     }
 
-    // 2. Manager Role (Explicit authorization only)
+    // 2. Manager Role (Explicit authorization or DB metadata)
     if (
       metaRole === "Manager" ||
       email === "vikramaditya@careeros.in" ||
@@ -239,7 +239,7 @@ export default function ProjectsPage() {
       return "Manager";
     }
 
-    // 3. Project Manager (PM) Role (Explicit authorization only)
+    // 3. Project Manager (PM) Role (Explicit authorization or DB metadata)
     if (
       metaRole === "PM" ||
       metaRole === "Project Manager" ||
@@ -249,7 +249,26 @@ export default function ProjectsPage() {
       return "PM";
     }
 
-    // 4. All other registered candidates/users: Strictly "Intern"
+    // 4. Team Leader (TL) Role (Explicit authorization or DB metadata)
+    if (
+      metaRole === "TL" ||
+      metaRole === "Team Leader" ||
+      email.includes("ananya") ||
+      email.includes("karan") ||
+      email.includes("tl")
+    ) {
+      return "TL";
+    }
+
+    // 5. Post-Intern Role (Explicit DB metadata)
+    if (
+      metaRole === "Post-Intern" ||
+      metaRole === "post_intern"
+    ) {
+      return "Post-Intern";
+    }
+
+    // 6. All other registered candidates/users: Strictly "Intern"
     return "Intern";
   }, [currentUser]);
 
@@ -546,25 +565,25 @@ export default function ProjectsPage() {
   const [annRole, setAnnRole] = useState<"Project Leader" | "Project Manager" | "Team Leader (TL)" | "Technical Captain">("Project Manager");
   const [annPriority, setAnnPriority] = useState<"urgent" | "important" | "normal">("important");
 
+  // Check if current logged-in user is a Team Leader (TL)
+  const isTL = useMemo(() => {
+    if (userRole === "TL") return true;
+    const metaRole = currentUser?.user_metadata?.role;
+    if (metaRole === "TL" || metaRole === "Team Leader") return true;
+    const email = currentUser?.email?.toLowerCase().trim() || "";
+    if (email.includes("ananya") || email.includes("karan") || email.includes("tl")) return true;
+    return teams.some((t) => t.teamLeaderEmail?.toLowerCase().trim() === email);
+  }, [currentUser, userRole, teams]);
+
   // Resolved Effective Role for Settings Console (Auto-detected based on database user role & application status)
   const effectiveSettingsRole = useMemo(() => {
     if (isBoss || isManager) return "boss";
     if (isPM) return "pm";
-    const email = currentUser?.email?.toLowerCase() || "";
-    if (email.includes("ananya") || email.includes("karan") || email.includes("tl")) return "tl";
-    if (enrolledApplication?.status === "completed" || enrolledApplication?.status === "offboarded") return "post_intern";
+    if (isTL) return "tl";
+    const metaRole = currentUser?.user_metadata?.role;
+    if (metaRole === "Post-Intern" || metaRole === "post_intern" || enrolledApplication?.status === "completed" || enrolledApplication?.status === "offboarded") return "post_intern";
     return "intern";
-  }, [isBoss, isManager, isPM, currentUser, enrolledApplication]);
-
-  // TL Attendance Sub-Tab State ("your_attendance" | "team_attendance")
-  const [tlAttendanceSubTab, setTlAttendanceSubTab] = useState<"your_attendance" | "team_attendance">("your_attendance");
-
-  // Check if current logged-in user is a Team Leader (TL)
-  const isTL = useMemo(() => {
-    const email = currentUser?.email?.toLowerCase().trim() || "";
-    if (email.includes("ananya") || email.includes("karan") || email.includes("tl")) return true;
-    return teams.some((t) => t.teamLeaderEmail?.toLowerCase().trim() === email);
-  }, [currentUser, teams]);
+  }, [isBoss, isManager, isPM, isTL, currentUser, enrolledApplication]);
 
   // PM Master Settings Inputs
   const [pmAppMode, setPmAppMode] = useState<"manual" | "auto">("manual");
