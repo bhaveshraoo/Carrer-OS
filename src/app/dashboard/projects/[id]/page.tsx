@@ -35,7 +35,25 @@ export default function ProjectDetailPage() {
   const projectId = (params?.id as string) || "proj-1";
   const { notify } = useNotifications();
 
-  const project = MOCK_PROJECTS.find((p) => p.id === projectId) || MOCK_PROJECTS[0];
+  const [project, setProject] = useState(() => {
+    return MOCK_PROJECTS.find((p) => p.id === projectId) || MOCK_PROJECTS[0];
+  });
+
+  useEffect(() => {
+    async function loadProjectData() {
+      try {
+        const res = await fetch("/api/projects");
+        const data = await res.json();
+        if (data?.success && Array.isArray(data.projects)) {
+          const found = data.projects.find((p: any) => p.id === projectId);
+          if (found) setProject(found);
+        }
+      } catch (e) {
+        console.warn("Failed to load project detail from API:", e);
+      }
+    }
+    loadProjectData();
+  }, [projectId]);
 
   // Apply Full-Page Mode State
   const [isApplying, setIsApplying] = useState(false);

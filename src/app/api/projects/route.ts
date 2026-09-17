@@ -78,9 +78,10 @@ export async function GET(req: Request) {
       }
     }
 
-    // Overwrite / merge DB records into memory store
+    // Overwrite / merge DB records into memory store safely
     dbProjects.forEach((p) => {
-      projectsStore.set(p.id, p);
+      const existing = projectsStore.get(p.id) || {};
+      projectsStore.set(p.id, { ...existing, ...p });
     });
 
     let result = Array.from(projectsStore.values());
